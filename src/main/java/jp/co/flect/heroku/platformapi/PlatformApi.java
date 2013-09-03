@@ -1,6 +1,9 @@
 package jp.co.flect.heroku.platformapi;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.io.Serializable;
@@ -11,7 +14,10 @@ import jp.co.flect.heroku.transport.TransportFactory;
 import jp.co.flect.heroku.transport.HttpRequest;
 import jp.co.flect.heroku.transport.HttpResponse;
 import jp.co.flect.heroku.platformapi.model.Account;
+import jp.co.flect.heroku.platformapi.model.Addon;
 import jp.co.flect.heroku.platformapi.model.RateLimits;
+
+import org.apache.commons.codec.binary.Base64;
 
 public class PlatformApi implements Serializable {
 	
@@ -79,9 +85,22 @@ public class PlatformApi implements Serializable {
 	private long requestStart;
 	private Transport transport = TransportFactory.createDefaultTransport();
 	
-	private Account account = null;
+	private Account account;
 	
-	private PlatformApi() {
+	public PlatformApi() {
+	}
+	
+	/**
+	 * //ToDo Not work with username and apiKey
+	 * https://devcenter.heroku.com/articles/platform-api-reference#authentication
+	 */
+	public PlatformApi(String username, String apiKey) {
+		try {
+			this.access_token = Base64.encodeBase64String((username + ":" + apiKey).getBytes("utf-8"));
+			this.token_type = "Basic";
+		} catch (UnsupportedEncodingException e) {
+			throw new IllegalStateException(e);
+		}
 	}
 	
 	public Transport getTransport() { return this.transport;}
@@ -152,4 +171,10 @@ public class PlatformApi implements Serializable {
 		return handleResponse("getRateLimits", res, RateLimits.class).getRemaining();
 	}
 	
+	//Addon
+	public List<Addon> getAddonList(String appName) throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/addons"));
+		Addon[] ret = handleResponse("getAccount", res, Addon[].class);
+		return Arrays.asList(ret);
+	}
 }

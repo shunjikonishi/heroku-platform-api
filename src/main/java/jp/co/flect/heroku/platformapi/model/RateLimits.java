@@ -1,9 +1,17 @@
 package jp.co.flect.heroku.platformapi.model;
 
-public class RateLimits {
+import java.util.Map;
+
+public class RateLimits extends AbstractModel{
 	
-	private int remaining;
+	public RateLimits() {
+		super();
+	}
 	
-	public int getRemaining() { return this.remaining;}
+	public RateLimits(Map<String, Object> map) {
+		super(map);
+	}
+	
+	public int getRemaining() { return getAsInt("remaining");}
 	
 }

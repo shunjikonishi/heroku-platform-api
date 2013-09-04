@@ -1,30 +1,28 @@
 package jp.co.flect.heroku.platformapi.model;
 
-import java.io.Serializable;
+import java.util.Map;
+import java.util.Date;
 
-public class Account implements Serializable {
+public class Account extends AbstractModel {
 	
-	private static final long serialVersionUID = -8066999666984167586L;
+	public Account() {
+		super();
+	}
 	
-	private boolean allow_tracking;
-	private boolean beta;
-	private String created_at;
-	private String email;
-	private String id;
-	private String last_login;
-	private String updated_at;
-	private boolean verified;
+	public Account(Map<String, Object> map) {
+		super(map);
+	}
 	
-	public boolean allowTracking() { return this.allow_tracking;}
-	public boolean isBeta() { return this.beta;}
+	public boolean allowTracking() { return getAsBoolean("allow_tracking");}
+	public boolean isBeta() { return getAsBoolean("beta");}
 	
-	public String getCreatedAtAsString() { return this.created_at;}
-	public String getLastLoginAsString() { return this.last_login;}
-	public String getUpdatedAtAsString() { return this.updated_at;}
+	public Date getCreatedAt() { return getAsDate("created_at");}
+	public Date getLastLogin() { return getAsDate("last_login");}
+	public Date getUpdatedAt() { return getAsDate("updated_at");}
 	
-	public String getEmail() { return this.email;}
-	public String getId() { return this.id;}
+	public String getEmail() { return getAsString("email");}
+	public String getId() { return getAsString("id");}
 	
-	public boolean isVerified() { return this.verified;}
+	public boolean isVerified() { return getAsBoolean("verified");}
 	
 }

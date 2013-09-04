@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.io.Serializable;
@@ -13,8 +14,11 @@ import jp.co.flect.heroku.transport.Transport;
 import jp.co.flect.heroku.transport.TransportFactory;
 import jp.co.flect.heroku.transport.HttpRequest;
 import jp.co.flect.heroku.transport.HttpResponse;
+import jp.co.flect.heroku.platformapi.model.AbstractModel;
 import jp.co.flect.heroku.platformapi.model.Account;
 import jp.co.flect.heroku.platformapi.model.Addon;
+import jp.co.flect.heroku.platformapi.model.App;
+import jp.co.flect.heroku.platformapi.model.AddonService;
 import jp.co.flect.heroku.platformapi.model.RateLimits;
 
 import org.apache.commons.codec.binary.Base64;
@@ -86,6 +90,7 @@ public class PlatformApi implements Serializable {
 	private Transport transport = TransportFactory.createDefaultTransport();
 	
 	private Account account;
+	private String loginedEmail;
 	
 	public PlatformApi() {
 	}
@@ -94,10 +99,9 @@ public class PlatformApi implements Serializable {
 	 * //ToDo Not work with username and apiKey
 	 * https://devcenter.heroku.com/articles/platform-api-reference#authentication
 	 */
-	public PlatformApi(String username, String apiKey) {
+	public PlatformApi(String apiKey) {
 		try {
-			this.access_token = Base64.encodeBase64String((username + ":" + apiKey).getBytes("utf-8"));
-			this.token_type = "Basic";
+			this.access_token = Base64.encodeBase64String((":" + apiKey).getBytes("utf-8"));
 		} catch (UnsupportedEncodingException e) {
 			throw new IllegalStateException(e);
 		}
@@ -118,7 +122,7 @@ public class PlatformApi implements Serializable {
 	}
 	
 	public String getAuthorization() {
-		return this.token_type + " " + this.access_token;
+		return this.token_type == null ? this.access_token : this.token_type + " " + this.access_token;
 	}
 	
 	private HttpRequest buildRequest(HttpRequest.Method method, String path) {
@@ -129,7 +133,7 @@ public class PlatformApi implements Serializable {
 		return request;
 	}
 	
-	private <T> T handleResponse(String name, HttpResponse res, Class<T> returnClass) throws IOException {
+	private <T extends AbstractModel> List<T> handleResponse(String name, HttpResponse res, Class<T> returnClass) throws IOException {
 		String body = res.getBody();
 		int status = res.getStatus();
 		
@@ -146,7 +150,20 @@ public class PlatformApi implements Serializable {
 		}
 		
 		if (status >= 200 && status < 300) {
-			return JsonUtils.parse(body, returnClass);
+			List<T> list = new ArrayList<T>();
+			List<Map<String, Object>> maps = JsonUtils.parseArray(body);
+			for (Map<String, Object> m : maps) {
+				try {
+					T obj = returnClass.newInstance();
+					obj.init(m);
+					list.add(obj);
+				} catch (InstantiationException e) {
+					throw new IllegalStateException(e);
+				} catch (IllegalAccessException e) {
+					throw new IllegalStateException(e);
+				}
+			}
+			return list;
 		} else {
 			if (body != null && body.indexOf("\"id\"") != -1 && body.indexOf("\"message\"") != -1) {
 				PlatformApiException.Error e = JsonUtils.parse(body, PlatformApiException.Error.class);
@@ -157,24 +174,58 @@ public class PlatformApi implements Serializable {
 		}
 	}
 	
+	public String getLoginedEmail() {
+		if (this.loginedEmail != null) {
+			return this.loginedEmail;
+		}
+		try {
+			Account a = getAccount();
+			this.loginedEmail = a.getEmail();
+		} catch (IOException e) {
+			this.loginedEmail = e.getMessage();
+		}
+		return this.loginedEmail;
+	}
+	
 	public Account getAccount() throws IOException {
 		if (this.account != null) {
 			return this.account;
 		}
 		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/account"));
-		this.account = handleResponse("getAccount", res, Account.class);
+		this.account = handleResponse("getAccount", res, Account.class).get(0);
 		return this.account;
 	}
 	
 	public int getRateLimits() throws IOException {
 		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/account/rate-limits"));
-		return handleResponse("getRateLimits", res, RateLimits.class).getRemaining();
+		return handleResponse("getRateLimits", res, RateLimits.class).get(0).getRemaining();
 	}
 	
 	//Addon
 	public List<Addon> getAddonList(String appName) throws IOException {
 		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/addons"));
-		Addon[] ret = handleResponse("getAccount", res, Addon[].class);
-		return Arrays.asList(ret);
+		return handleResponse("getAddonList", res, Addon.class);
+	}
+	
+	public Addon getAddon(String appName, String idOrName) throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/addons/" + idOrName));
+		return handleResponse("getAddon", res, Addon.class).get(0);
+	}
+	
+	//AddonService
+	public List<AddonService> getAddonServiceList() throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/addon-services"));
+		return handleResponse("getAddonServiceList", res, AddonService.class);
+	}
+	
+	public AddonService getAddonService(String idOrName) throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/addon-services/" + idOrName));
+		return handleResponse("getAddonServiceList", res, AddonService.class).get(0);
+	}
+	
+	//App
+	public List<App> getAppList() throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps"));
+		return handleResponse("getAppList", res, App.class);
 	}
 }

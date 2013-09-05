@@ -5,12 +5,12 @@
 	<modelVersion>4.0.0</modelVersion>
 	
 	<groupId>jp.co.flect</groupId>
-	<artifactId>heroku-platform</artifactId>
+	<artifactId>heroku-platform-api</artifactId>
 	<version>1.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>heroku-platform</name>
-	<url>https://github.com/shunjikonishi/heroku-platform</url>
+	<name>heroku-platform-api</name>
+	<url>https://github.com/shunjikonishi/heroku-platform-api</url>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

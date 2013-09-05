@@ -20,6 +20,7 @@ import jp.co.flect.heroku.platformapi.model.Addon;
 import jp.co.flect.heroku.platformapi.model.App;
 import jp.co.flect.heroku.platformapi.model.AddonService;
 import jp.co.flect.heroku.platformapi.model.RateLimits;
+import jp.co.flect.heroku.platformapi.model.Region;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -130,6 +131,9 @@ public class PlatformApi implements Serializable {
 		HttpRequest request = new HttpRequest(method, HOST_API + path);
 		request.setHeader("Accept", "application/vnd.heroku+json; version=3");
 		request.setHeader("Authorization", getAuthorization());
+		if (method == HttpRequest.Method.POST) {
+			request.setHeader("content-type", "application/json");
+		}
 		return request;
 	}
 	
@@ -227,5 +231,13 @@ public class PlatformApi implements Serializable {
 	public List<App> getAppList() throws IOException {
 		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps"));
 		return handleResponse("getAppList", res, App.class);
+	}
+	
+	public App createApp(String name, Region region) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps");
+		request.setParameter("name", name);
+		request.setParameter("region.name", region.toString());
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("createApp", res, App.class).get(0);
 	}
 }

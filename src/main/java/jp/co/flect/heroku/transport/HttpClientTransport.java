@@ -14,6 +14,7 @@ import org.apache.http.HttpHost;
 import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
@@ -39,16 +40,6 @@ public class HttpClientTransport implements Transport {
 	
 	public HttpResponse execute(HttpRequest request) throws IOException {
 		HttpClient client = getHttpClient();
-		List<NameValuePair> list = new ArrayList<NameValuePair>();
-		for (Map.Entry<String, String[]> entry : request.getParameters().entrySet()) {
-			String key = entry.getKey();
-			if (entry.getValue().length > 1) {
-				key += "[]";
-			}
-			for (String s : entry.getValue()) {
-				list.add(new BasicNameValuePair(key, s));
-			}
-		}
 		HttpUriRequest method = request.getMethod() == HttpRequest.Method.POST ? 
 			new HttpPost(request.getUrl()) :
 			new HttpGet(request.getUrl());
@@ -58,10 +49,28 @@ public class HttpClientTransport implements Transport {
 				method.addHeader(key, s);
 			}
 		}
-		if (request.getMethod() == HttpRequest.Method.POST) {
-			((HttpPost)method).setEntity(new UrlEncodedFormEntity(list, "utf-8"));
+		if (request.getMethod() == HttpRequest.Method.POST && request.getParameters().size() > 0) {
+			if ("application/json".equals(request.getFirstHeader("content-type"))) {
+				String json = JsonUtils.serialize(request.getParameters());
+System.out.println("Post parameter: " + json);
+				((HttpPost)method).setEntity(new StringEntity(json, "utf-8"));
+			} else {
+				List<NameValuePair> list = new ArrayList<NameValuePair>();
+				for (Map.Entry<String, Object> entry : request.getParameters().entrySet()) {
+					String key = entry.getKey();
+					Object value = entry.getValue();
+					if (value instanceof String) {
+						list.add(new BasicNameValuePair(key, value.toString()));
+					} else if (value instanceof String[]) {
+						key += "[]";
+						for (String s : (String[])value) {
+							list.add(new BasicNameValuePair(key, s));
+						}
+					}
+				}
+				((HttpPost)method).setEntity(new UrlEncodedFormEntity(list, "utf-8"));
+			}
 		}
-		
 		return new HttpResponseWrapper(client.execute(method));
 	}
 	

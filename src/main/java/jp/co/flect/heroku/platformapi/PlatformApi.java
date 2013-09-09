@@ -127,11 +127,12 @@ public class PlatformApi implements Serializable {
 	}
 	
 	private HttpRequest buildRequest(HttpRequest.Method method, String path) {
+System.out.println("Path: " + path);
 		this.requestStart = System.currentTimeMillis();
 		HttpRequest request = new HttpRequest(method, HOST_API + path);
 		request.setHeader("Accept", "application/vnd.heroku+json; version=3");
 		request.setHeader("Authorization", getAuthorization());
-		if (method == HttpRequest.Method.POST) {
+		if (method == HttpRequest.Method.POST || method == HttpRequest.Method.PATCH) {
 			request.setHeader("content-type", "application/json");
 		}
 		return request;
@@ -178,6 +179,38 @@ public class PlatformApi implements Serializable {
 		}
 	}
 	
+	private Map<String, String> handleResponseAsMap(String name, HttpResponse res) throws IOException {
+		String body = res.getBody();
+		int status = res.getStatus();
+		
+		debugLog(name, body);
+		
+		String rlr = res.getHeader("RateLimit-Remaining");
+		if (rlr != null) {
+			try {
+				this.rateLimitRemaining = Integer.parseInt(rlr);
+			} catch (NumberFormatException e) {
+				//not occur
+				e.printStackTrace();
+			}
+		}
+		
+		if (status >= 200 && status < 300) {
+			Map<String, Object> map = JsonUtils.parse(body);
+			Map<String, String> ret = new HashMap<String, String>();
+			for (Map.Entry<String, Object> entry : map.entrySet()) {
+				ret.put(entry.getKey(), entry.getValue().toString());
+			}
+			return ret;
+		} else {
+			if (body != null && body.indexOf("\"id\"") != -1 && body.indexOf("\"message\"") != -1) {
+				PlatformApiException.Error e = JsonUtils.parse(body, PlatformApiException.Error.class);
+				throw new PlatformApiException(status, e);
+			} else {
+				throw new IOException("status=" + status + ", body=" + body);
+			}
+		}
+	}
 	public String getLoginedEmail() {
 		if (this.loginedEmail != null) {
 			return this.loginedEmail;
@@ -233,11 +266,41 @@ public class PlatformApi implements Serializable {
 		return handleResponse("getAppList", res, App.class);
 	}
 	
+	public App getApp(String name) throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps/" + name));
+		return handleResponse("getApp", res, App.class).get(0);
+	}
+
 	public App createApp(String name, Region region) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps");
 		request.setParameter("name", name);
 		request.setParameter("region.name", region.toString());
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("createApp", res, App.class).get(0);
+	}
+
+	public App deleteApp(String name) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/apps/" + name);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("deleteApp", res, App.class).get(0);
+	}
+
+	public App renameApp(String name, String newName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/apps/" + name);
+		request.setParameter("name", newName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("renameApp", res, App.class).get(0);
+	}
+
+	public Map<String, String> getConfigVars(String name) throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps/" + name + "/config-vars"));
+		return handleResponseAsMap("getConfigVars", res);
+	}
+
+	public Map<String, String> setConfigVar(String appName, String name, String value) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/apps/" + appName + "/config-vars");
+		request.setParameter(name, value == null ? "" : value);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponseAsMap("getConfigVars", res);
 	}
 }

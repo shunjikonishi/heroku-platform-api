@@ -7,7 +7,9 @@ public class HttpRequest {
 	
 	public enum Method {
 		GET,
-		POST
+		POST,
+		PATCH,
+		DELETE
 	};
 	
 	private Method method;

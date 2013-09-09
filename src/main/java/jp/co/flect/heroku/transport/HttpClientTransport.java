@@ -19,7 +19,10 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPatch;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.entity.mime.content.StringBody;
@@ -40,20 +43,32 @@ public class HttpClientTransport implements Transport {
 	
 	public HttpResponse execute(HttpRequest request) throws IOException {
 		HttpClient client = getHttpClient();
-		HttpUriRequest method = request.getMethod() == HttpRequest.Method.POST ? 
-			new HttpPost(request.getUrl()) :
-			new HttpGet(request.getUrl());
+		HttpUriRequest method = null;
+		switch (request.getMethod()) {
+			case POST:
+				method = new HttpPost(request.getUrl());
+				break;
+			case GET:
+				method = new HttpGet(request.getUrl());
+				break;
+			case PATCH:
+				method = new HttpPatch(request.getUrl());
+				break;
+			case DELETE:
+				method = new HttpDelete(request.getUrl());
+				break;
+		} 
 		for (Map.Entry<String, String[]> entry : request.getHeaders().entrySet()) {
 			String key = entry.getKey();
 			for (String s : entry.getValue()) {
 				method.addHeader(key, s);
 			}
 		}
-		if (request.getMethod() == HttpRequest.Method.POST && request.getParameters().size() > 0) {
+		if (request.getParameters().size() > 0) {
 			if ("application/json".equals(request.getFirstHeader("content-type"))) {
 				String json = JsonUtils.serialize(request.getParameters());
 System.out.println("Post parameter: " + json);
-				((HttpPost)method).setEntity(new StringEntity(json, "utf-8"));
+				((HttpEntityEnclosingRequestBase)method).setEntity(new StringEntity(json, "utf-8"));
 			} else {
 				List<NameValuePair> list = new ArrayList<NameValuePair>();
 				for (Map.Entry<String, Object> entry : request.getParameters().entrySet()) {

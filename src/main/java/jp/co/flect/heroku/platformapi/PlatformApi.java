@@ -3,6 +3,8 @@ package jp.co.flect.heroku.platformapi;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -23,6 +25,9 @@ import jp.co.flect.heroku.platformapi.model.ConfigVars;
 import jp.co.flect.heroku.platformapi.model.RateLimits;
 import jp.co.flect.heroku.platformapi.model.Region;
 import jp.co.flect.heroku.platformapi.model.Release;
+import jp.co.flect.heroku.platformapi.model.Collaborator;
+import jp.co.flect.heroku.platformapi.model.Formation;
+import jp.co.flect.heroku.platformapi.model.Dyno;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -133,7 +138,7 @@ public class PlatformApi implements Serializable {
 		HttpRequest request = new HttpRequest(method, HOST_API + path);
 		request.setHeader("Accept", "application/vnd.heroku+json; version=3");
 		request.setHeader("Authorization", getAuthorization());
-		if (method == HttpRequest.Method.POST || method == HttpRequest.Method.PATCH) {
+		if (method == HttpRequest.Method.POST || method == HttpRequest.Method.PATCH || method == HttpRequest.Method.PUT) {
 			request.setHeader("content-type", "application/json");
 		}
 		return request;
@@ -157,8 +162,11 @@ public class PlatformApi implements Serializable {
 		String requestId = res.getHeader("Request-Id");
 		
 		if (status >= 200 && status < 300) {
-			List<T> list = new ArrayList<T>();
 			List<Map<String, Object>> maps = JsonUtils.parseArray(body);
+			if (maps == null) {
+				return null;
+			}
+			List<T> list = new ArrayList<T>();
 			for (Map<String, Object> m : maps) {
 				try {
 					T obj = returnClass.newInstance();
@@ -195,6 +203,12 @@ public class PlatformApi implements Serializable {
 		return this.loginedEmail;
 	}
 	
+	public int getRateLimits() throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/account/rate-limits"));
+		return handleResponse("getRateLimits", res, RateLimits.class).get(0).getRemaining();
+	}
+	
+	//Account
 	public Account getAccount() throws IOException {
 		if (this.account != null) {
 			return this.account;
@@ -204,9 +218,12 @@ public class PlatformApi implements Serializable {
 		return this.account;
 	}
 	
-	public int getRateLimits() throws IOException {
-		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/account/rate-limits"));
-		return handleResponse("getRateLimits", res, RateLimits.class).get(0).getRemaining();
+	public void changePassword(String currentPassword, String newPassword) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PUT, "/account/password");
+		request.setParameter("current_password", currentPassword);
+		request.setParameter("password", newPassword);
+		HttpResponse res = getTransport().execute(request);
+		handleResponse("changePassword", res, ConfigVars.class);
 	}
 	
 	//Addon
@@ -298,12 +315,106 @@ public class PlatformApi implements Serializable {
 		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/releases");
 		HttpResponse res = getTransport().execute(request);
 		List<Release> list = handleResponse("getReleaseList", res, Release.class);
+		Collections.sort(list, new Comparator<Release>() {
+			public int compare(Release r1, Release r2) {
+				return 0 - (r1.getVersion() - r2.getVersion());
+			}
+		});
+		return list;
 	}
 	
-	//Release
 	public Release getRelease(String appName, String idOrVersion) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/releases/" + idOrVersion);
 		HttpResponse res = getTransport().execute(request);
-		return handleResponse("getReleaseList", res, Release.class).get(0);
+		return handleResponse("getRelease", res, Release.class).get(0);
 	}
+	
+	//Collaborator
+	public List<Collaborator> getCollaboratorList(String appName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/collaborators");
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getCollaboratorList", res, Collaborator.class);
+	}
+	
+	public Collaborator getCollaborator(String appName, String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/collaborators/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getCollaborator", res, Collaborator.class).get(0);
+	}
+	
+	public Collaborator addCollaborator(String appName, String idOrName) throws IOException {
+		return addCollaborator(appName, idOrName, false);
+	}
+	
+	public Collaborator addCollaborator(String appName, String idOrName, boolean silent) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/collaborators");
+		if (silent) {
+			request.setParameter("silent", silent);
+		}
+		if (idOrName.indexOf("@") == -1) {
+			request.setParameter("user.id", idOrName);
+		} else {
+			request.setParameter("user.email", idOrName);
+		}
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("addCollaborator", res, Collaborator.class).get(0);
+	}
+	
+	public Collaborator deleteCollaborator(String appName, String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/apps/" + appName + "/collaborators/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("deleteCollaborator", res, Collaborator.class).get(0);
+	}
+	
+	//Formation
+	public List<Formation> getFormationList(String appName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/formation");
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getFormationList", res, Formation.class);
+	}
+	
+	public Formation getFormation(String appName, String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/formation/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getFormation", res, Formation.class).get(0);
+	}
+	
+	public Formation updateFormation(String appName, String idOrName, int quantity, int size) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/apps/" + appName + "/formation/" + idOrName);
+		if (quantity >= 0) {
+			request.setParameter("quantity", quantity);
+		}
+		if (size >= 0) {
+			request.setParameter("size", size);
+		}
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("updateFormation", res, Formation.class).get(0);
+	}
+	
+	//Dyno
+	public List<Dyno> getDynoList(String appName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/dynos");
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getDynoList", res, Dyno.class);
+	}
+	
+	public Dyno getDyno(String appName, String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/dynos/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getDyno", res, Dyno.class).get(0);
+	}
+	
+	public void deleteDyno(String appName, String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/apps/" + appName + "/dynos/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		handleResponse("deleteDyno", res, Dyno.class);
+	}
+	
+	public Dyno runDyno(String appName, String command) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/dynos");
+		request.setParameter("command", command);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("runDyno", res, Dyno.class).get(0);
+	}
+	
 }

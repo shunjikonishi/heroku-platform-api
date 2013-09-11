@@ -18,6 +18,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpDelete;
@@ -53,6 +54,9 @@ public class HttpClientTransport implements Transport {
 				break;
 			case PATCH:
 				method = new HttpPatch(request.getUrl());
+				break;
+			case PUT:
+				method = new HttpPut(request.getUrl());
 				break;
 			case DELETE:
 				method = new HttpDelete(request.getUrl());

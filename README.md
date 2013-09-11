@@ -17,6 +17,9 @@ Implemented features
 - App
 - Config
 - Release
+- Collaborator
+- Formation
+- Dyno
 
 Not implemented yet
 -------------------
@@ -24,16 +27,12 @@ This list is based on [devcenter document](https://devcenter.heroku.com/articles
 
 - Account.update
 - AccountFeature
-- Account.changePassword
 - Addon.create
 - Addon.update
 - Addon.delete
 - AppFeature
 - AppTransfer
-- Collaborator
 - Domain
-- Dyno
-- Formation
 - Key
 - LogDrain
 - LogSession

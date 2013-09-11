@@ -51,4 +51,5 @@ public class App extends AbstractModel {
 	
 	public boolean isMaintenance() { return getAsBoolean("maintenance");}
 	
+	public String getTier() { return getAsString("tier");}
 }

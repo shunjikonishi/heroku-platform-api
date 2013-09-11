@@ -113,8 +113,12 @@ public abstract class AbstractModel implements Serializable {
 	
 	public int getAsInt(String name) {
 		Object o = get(name);
-		if (o instanceof Number) {
-			return ((Number)o).intValue();
+		if (o instanceof Integer) {
+			return ((Integer)o).intValue();
+		} else if (o instanceof Number) {
+			int n = ((Number)o).intValue();
+			set(name, n);
+			return n;
 		} else if (o instanceof String) {
 			try {
 				int n = Integer.parseInt((String)o);
@@ -129,8 +133,12 @@ public abstract class AbstractModel implements Serializable {
 	
 	public long getAsLong(String name) {
 		Object o = get(name);
-		if (o instanceof Number) {
-			return ((Number)o).longValue();
+		if (o instanceof Long) {
+			return ((Long)o).longValue();
+		} else if (o instanceof Number) {
+			long n = ((Number)o).longValue();
+			set(name, n);
+			return n;
 		} else if (o instanceof String) {
 			try {
 				long n = Long.parseLong((String)o);

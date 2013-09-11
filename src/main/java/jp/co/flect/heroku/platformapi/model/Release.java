@@ -24,5 +24,5 @@ public class Release extends AbstractModel {
 	
 	public String getDescription() { return getAsString("description");}
 	
-	public String getSlugId() { return getAsString("sulg.id");}
+	public String getSlugId() { return getAsString("slug.id");}
 }

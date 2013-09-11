@@ -13,28 +13,82 @@ public abstract class AbstractModel implements Serializable {
 	
 	private static final long serialVersionUID = -281893291198955622L;;
 	
-	private static final String DATE_FORMAT = "yyyy-MM-ddTHH:mm:ssZ";
+	private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 	
-	private Map<String, Object> _map;
+	private Map<String, Object> map;
+	
+	private String requestId;
 	
 	public AbstractModel() {
 		this(new LinkedHashMap<String, Object>());
 	}
 	
 	public AbstractModel(Map<String, Object> map) {
-		this._map = map;
+		this.map = map;
 	}
 	
 	public void init(Map<String, Object> map) {
-		this._map.putAll(map);
+		this.map.putAll(map);
 	}
+	
+	public String getRequestId() { return this.requestId;}
+	public void setRequestId(String s) { this.requestId = s;}
 	
 	public List<String> keys() {
-		return new ArrayList<String>(this._map.keySet());
+		List<String> list = new ArrayList<String>();
+		doKeys(this.map, list, null);
+		return list;
 	}
 	
-	public Object get(String name) { return this._map.get(name);}
-	public void set(String name, Object value) { this._map.put(name, value);}
+	private static void doKeys(Map<String, Object> m, List<String> list, String prefix) {
+		for (Map.Entry<String, Object> entry : m.entrySet()) {
+			String key = entry.getKey();
+			if (entry.getValue() instanceof Map) {
+				doKeys((Map<String, Object>)entry.getValue(), list, key);
+			} else {
+				list.add(prefix == null ? key : prefix + "." + key);
+			}
+		}
+	}
+	
+	public Object get(String name) { 
+		return doGet(this.map, name);
+	}
+	
+	private static Object doGet(Map<String, Object> m, String name) {
+		int idx = name.indexOf(".");
+		if (idx == -1) {
+			return m.get(name);
+		} else {
+			String prefix = name.substring(0, idx);
+			String suffix = name.substring(idx+1);
+			Map<String, Object> childMap = (Map<String, Object>)m.get(prefix);
+			if (childMap == null) {
+				return null;
+			}
+			return doGet(childMap, suffix);
+		}
+	}
+	
+	public void set(String name, Object value) { 
+		doSet(this.map, name, value);
+	}
+	
+	private static void doSet(Map<String, Object> m, String name, Object value) {
+		int idx = name.indexOf(".");
+		if (idx == -1) {
+			m.put(name, value);
+		} else {
+			String prefix = name.substring(0, idx);
+			String suffix = name.substring(idx+1);
+			Map<String, Object> childMap = (Map<String, Object>)m.get(prefix);
+			if (childMap == null) {
+				childMap = new LinkedHashMap<String, Object>();
+				m.put(prefix, childMap);
+			}
+			doSet(childMap, suffix, value);
+		}
+	}
 	
 	public String getAsString(String name) {
 		Object o = get(name);
@@ -73,6 +127,22 @@ public abstract class AbstractModel implements Serializable {
 		return 0;
 	}
 	
+	public long getAsLong(String name) {
+		Object o = get(name);
+		if (o instanceof Number) {
+			return ((Number)o).longValue();
+		} else if (o instanceof String) {
+			try {
+				long n = Long.parseLong((String)o);
+				set(name, n);
+				return n;
+			} catch (NumberFormatException e) {
+				e.printStackTrace();
+			}
+		}
+		return 0;
+	}
+	
 	public boolean getAsBoolean(String name) {
 		Object o = get(name);
 		if (o instanceof Boolean) {
@@ -85,6 +155,6 @@ public abstract class AbstractModel implements Serializable {
 		return false;
 	}
 	
-	public String toString() { return this._map.toString();}
+	public String toString() { return this.map.toString();}
 }
 

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.lang.reflect.Type;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
 public class JsonByGson implements Json {
@@ -23,6 +24,6 @@ public class JsonByGson implements Json {
 	}
 	
 	public String serialize(Object obj) {
-		return new Gson().toJson(obj);
+		return new GsonBuilder().serializeNulls().create().toJson(obj);
 	}
 }

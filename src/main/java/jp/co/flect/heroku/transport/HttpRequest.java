@@ -29,11 +29,11 @@ public class HttpRequest {
 	public Map<String, Object> getParameters() { return this.params;}
 	public Map<String, String[]> getHeaders() { return this.headers;}
 	
-	public void setParameter(String name, String... values) {
+	public void setParameter(String name, Object... values) {
 		doSetParameter(this.params, name, values);
 	}
 	
-	private void doSetParameter(Map<String, Object> map, String name, String... values) {
+	private void doSetParameter(Map<String, Object> map, String name, Object... values) {
 		int idx = name.indexOf(".");
 		if (idx == -1) {
 			if (values.length == 1) {

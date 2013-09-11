@@ -41,8 +41,8 @@ public class App extends AbstractModel {
 		return map == null ? null : (String)map.get("name");
 	}
 	
-	public int getRepoSize() { return getAsInt("repo_size");}
-	public int getSlugSize() { return getAsInt("slug_size");}
+	public long getRepoSize() { return getAsLong("repo_size");}
+	public long getSlugSize() { return getAsLong("slug_size");}
 	
 	public String getStack() { return getAsString("stack");}
 	public String getWebUrl() { return getAsString("web_url");}

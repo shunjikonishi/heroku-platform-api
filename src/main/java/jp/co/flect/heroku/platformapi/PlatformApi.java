@@ -19,8 +19,10 @@ import jp.co.flect.heroku.platformapi.model.Account;
 import jp.co.flect.heroku.platformapi.model.Addon;
 import jp.co.flect.heroku.platformapi.model.App;
 import jp.co.flect.heroku.platformapi.model.AddonService;
+import jp.co.flect.heroku.platformapi.model.ConfigVars;
 import jp.co.flect.heroku.platformapi.model.RateLimits;
 import jp.co.flect.heroku.platformapi.model.Region;
+import jp.co.flect.heroku.platformapi.model.Release;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -127,7 +129,6 @@ public class PlatformApi implements Serializable {
 	}
 	
 	private HttpRequest buildRequest(HttpRequest.Method method, String path) {
-System.out.println("Path: " + path);
 		this.requestStart = System.currentTimeMillis();
 		HttpRequest request = new HttpRequest(method, HOST_API + path);
 		request.setHeader("Accept", "application/vnd.heroku+json; version=3");
@@ -153,6 +154,7 @@ System.out.println("Path: " + path);
 				e.printStackTrace();
 			}
 		}
+		String requestId = res.getHeader("Request-Id");
 		
 		if (status >= 200 && status < 300) {
 			List<T> list = new ArrayList<T>();
@@ -161,6 +163,7 @@ System.out.println("Path: " + path);
 				try {
 					T obj = returnClass.newInstance();
 					obj.init(m);
+					obj.setRequestId(requestId);
 					list.add(obj);
 				} catch (InstantiationException e) {
 					throw new IllegalStateException(e);
@@ -179,38 +182,6 @@ System.out.println("Path: " + path);
 		}
 	}
 	
-	private Map<String, String> handleResponseAsMap(String name, HttpResponse res) throws IOException {
-		String body = res.getBody();
-		int status = res.getStatus();
-		
-		debugLog(name, body);
-		
-		String rlr = res.getHeader("RateLimit-Remaining");
-		if (rlr != null) {
-			try {
-				this.rateLimitRemaining = Integer.parseInt(rlr);
-			} catch (NumberFormatException e) {
-				//not occur
-				e.printStackTrace();
-			}
-		}
-		
-		if (status >= 200 && status < 300) {
-			Map<String, Object> map = JsonUtils.parse(body);
-			Map<String, String> ret = new HashMap<String, String>();
-			for (Map.Entry<String, Object> entry : map.entrySet()) {
-				ret.put(entry.getKey(), entry.getValue().toString());
-			}
-			return ret;
-		} else {
-			if (body != null && body.indexOf("\"id\"") != -1 && body.indexOf("\"message\"") != -1) {
-				PlatformApiException.Error e = JsonUtils.parse(body, PlatformApiException.Error.class);
-				throw new PlatformApiException(status, e);
-			} else {
-				throw new IOException("status=" + status + ", body=" + body);
-			}
-		}
-	}
 	public String getLoginedEmail() {
 		if (this.loginedEmail != null) {
 			return this.loginedEmail;
@@ -291,16 +262,48 @@ System.out.println("Path: " + path);
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("renameApp", res, App.class).get(0);
 	}
-
-	public Map<String, String> getConfigVars(String name) throws IOException {
-		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps/" + name + "/config-vars"));
-		return handleResponseAsMap("getConfigVars", res);
+	
+	public App maintainApp(String name, boolean maintain) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/apps/" + name);
+		request.setParameter("maintenance", maintain);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("maintainApp", res, App.class).get(0);
 	}
 
-	public Map<String, String> setConfigVar(String appName, String name, String value) throws IOException {
+	//Config
+	public ConfigVars getConfigVars(String name) throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps/" + name + "/config-vars"));
+		return handleResponse("getConfigVars", res, ConfigVars.class).get(0);
+	}
+
+	public ConfigVars setConfigVar(String appName, String name, String value) throws IOException {
+		Map<String, String> vars = new HashMap<String, String>();
+		vars.put(name, value);
+		return setConfigVars(appName, vars);
+	}
+	
+	public ConfigVars setConfigVars(String appName, Map<String, String> vars) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/apps/" + appName + "/config-vars");
-		request.setParameter(name, value == null ? "" : value);
+		for (Map.Entry<String, String> entry : vars.entrySet()) {
+			String name = entry.getKey();
+			String value = entry.getValue();
+			request.setParameter(name, value);
+		}
 		HttpResponse res = getTransport().execute(request);
-		return handleResponseAsMap("getConfigVars", res);
+		return handleResponse("setConfigVars", res, ConfigVars.class).get(0);
+	}
+	
+	//Release
+	public List<Release> getReleaseList(String appName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/releases");
+		HttpResponse res = getTransport().execute(request);
+		List<Release> list = handleResponse("getReleaseList", res, Release.class);
+	}
+	
+	//Release
+	public Release getRelease(String appName, String idOrVersion) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/releases/" + idOrVersion);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getReleaseList", res, Release.class).get(0);
 	}
 }

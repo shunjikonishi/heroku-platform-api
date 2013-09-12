@@ -28,6 +28,7 @@ import jp.co.flect.heroku.platformapi.model.Release;
 import jp.co.flect.heroku.platformapi.model.Collaborator;
 import jp.co.flect.heroku.platformapi.model.Formation;
 import jp.co.flect.heroku.platformapi.model.Dyno;
+import jp.co.flect.heroku.platformapi.model.Range;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -134,6 +135,10 @@ public class PlatformApi implements Serializable {
 	}
 	
 	private HttpRequest buildRequest(HttpRequest.Method method, String path) {
+		return buildRequest(method, path, null);
+	}
+	
+	private HttpRequest buildRequest(HttpRequest.Method method, String path, Range range) {
 		this.requestStart = System.currentTimeMillis();
 		HttpRequest request = new HttpRequest(method, HOST_API + path);
 		request.setHeader("Accept", "application/vnd.heroku+json; version=3");
@@ -141,10 +146,17 @@ public class PlatformApi implements Serializable {
 		if (method == HttpRequest.Method.POST || method == HttpRequest.Method.PATCH || method == HttpRequest.Method.PUT) {
 			request.setHeader("content-type", "application/json");
 		}
+		if (range != null) {
+			range.apply(request);
+		}
 		return request;
 	}
 	
 	private <T extends AbstractModel> List<T> handleResponse(String name, HttpResponse res, Class<T> returnClass) throws IOException {
+		return handleResponse(name, res, returnClass, null);
+	}
+	
+	private <T extends AbstractModel> List<T> handleResponse(String name, HttpResponse res, Class<T> returnClass, Range range) throws IOException {
 		String body = res.getBody();
 		int status = res.getStatus();
 		
@@ -160,6 +172,20 @@ public class PlatformApi implements Serializable {
 			}
 		}
 		String requestId = res.getHeader("Request-Id");
+		if (range != null) {
+			String ar = res.getHeader("Accept-Ranges");
+			if (ar != null) {
+				String[] array = ar.split(",");
+				for (int i=0; i<array.length; i++) {
+					array[i] = array[i].trim();
+				}
+				range.setSortableFields(array);
+			}
+			String nr = res.getHeader("Next-Range");
+			if (nr != null) {
+				range.setNextRange(new Range(nr));
+			}
+		}
 		
 		if (status >= 200 && status < 300) {
 			List<Map<String, Object>> maps = JsonUtils.parseArray(body);
@@ -228,8 +254,13 @@ public class PlatformApi implements Serializable {
 	
 	//Addon
 	public List<Addon> getAddonList(String appName) throws IOException {
-		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/addons"));
-		return handleResponse("getAddonList", res, Addon.class);
+		return getAddonList(appName, null);
+	}
+	
+	public List<Addon> getAddonList(String appName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/addons", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getAddonList", res, Addon.class, range);
 	}
 	
 	public Addon getAddon(String appName, String idOrName) throws IOException {
@@ -239,19 +270,29 @@ public class PlatformApi implements Serializable {
 	
 	//AddonService
 	public List<AddonService> getAddonServiceList() throws IOException {
-		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/addon-services"));
-		return handleResponse("getAddonServiceList", res, AddonService.class);
+		return getAddonServiceList(null);
+	}
+	
+	public List<AddonService> getAddonServiceList(Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/addon-services", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getAddonServiceList", res, AddonService.class, range);
 	}
 	
 	public AddonService getAddonService(String idOrName) throws IOException {
 		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/addon-services/" + idOrName));
-		return handleResponse("getAddonServiceList", res, AddonService.class).get(0);
+		return handleResponse("getAddonService", res, AddonService.class).get(0);
 	}
 	
 	//App
 	public List<App> getAppList() throws IOException {
-		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps"));
-		return handleResponse("getAppList", res, App.class);
+		return getAppList(null);
+	}
+	
+	public List<App> getAppList(Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getAppList", res, App.class, range);
 	}
 	
 	public App getApp(String name) throws IOException {
@@ -312,14 +353,15 @@ public class PlatformApi implements Serializable {
 	
 	//Release
 	public List<Release> getReleaseList(String appName) throws IOException {
-		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/releases");
+		Range range = new Range();
+		range.setSortOrder("version", false);
+		return getReleaseList(appName, range);
+	}
+	
+	public List<Release> getReleaseList(String appName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/releases", range);
 		HttpResponse res = getTransport().execute(request);
-		List<Release> list = handleResponse("getReleaseList", res, Release.class);
-		Collections.sort(list, new Comparator<Release>() {
-			public int compare(Release r1, Release r2) {
-				return 0 - (r1.getVersion() - r2.getVersion());
-			}
-		});
+		List<Release> list = handleResponse("getReleaseList", res, Release.class, range);
 		return list;
 	}
 	
@@ -331,9 +373,13 @@ public class PlatformApi implements Serializable {
 	
 	//Collaborator
 	public List<Collaborator> getCollaboratorList(String appName) throws IOException {
-		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/collaborators");
+		return getCollaboratorList(appName, null);
+	}
+	
+	public List<Collaborator> getCollaboratorList(String appName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/collaborators", range);
 		HttpResponse res = getTransport().execute(request);
-		return handleResponse("getCollaboratorList", res, Collaborator.class);
+		return handleResponse("getCollaboratorList", res, Collaborator.class, range);
 	}
 	
 	public Collaborator getCollaborator(String appName, String idOrName) throws IOException {
@@ -368,9 +414,13 @@ public class PlatformApi implements Serializable {
 	
 	//Formation
 	public List<Formation> getFormationList(String appName) throws IOException {
-		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/formation");
+		return getFormationList(appName, null);
+	}
+	
+	public List<Formation> getFormationList(String appName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/formation", range);
 		HttpResponse res = getTransport().execute(request);
-		return handleResponse("getFormationList", res, Formation.class);
+		return handleResponse("getFormationList", res, Formation.class, range);
 	}
 	
 	public Formation getFormation(String appName, String idOrName) throws IOException {
@@ -393,9 +443,13 @@ public class PlatformApi implements Serializable {
 	
 	//Dyno
 	public List<Dyno> getDynoList(String appName) throws IOException {
-		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/dynos");
+		return getDynoList(appName, null);
+	}
+	
+	public List<Dyno> getDynoList(String appName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/dynos", range);
 		HttpResponse res = getTransport().execute(request);
-		return handleResponse("getDynoList", res, Dyno.class);
+		return handleResponse("getDynoList", res, Dyno.class, range);
 	}
 	
 	public Dyno getDyno(String appName, String idOrName) throws IOException {

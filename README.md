@@ -11,26 +11,24 @@ Implemented features
 --------------------
 - RateLimitRating
 - Account
-- Addon.list
-- Addon.info
+- AccountFeature
+- Addon
 - AddonService
 - App
+- AppFeature
 - Config
 - Release
 - Collaborator
 - Formation
 - Dyno
+- Plan
+- Region
 
 Not implemented yet
 -------------------
 This list is based on [devcenter document](https://devcenter.heroku.com/articles/platform-api-reference#app-feature). (2013-09-11)
 
 - Account.update
-- AccountFeature
-- Addon.create
-- Addon.update
-- Addon.delete
-- AppFeature
 - AppTransfer
 - Domain
 - Key
@@ -39,7 +37,5 @@ This list is based on [devcenter document](https://devcenter.heroku.com/articles
 - OAuthAuthorization
 - OAuthClient
 - OAuthToken
-- Plan
-- Region
 - SSLEndpoint
 

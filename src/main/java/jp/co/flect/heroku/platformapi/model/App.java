@@ -21,25 +21,11 @@ public class App extends AbstractModel {
 	public Date getArchivedAt() { return getAsDate("archived_at");}
 	public Date getReleasedAt() { return getAsDate("released_at");}
 	
-	public String getOwnerEmail() {
-		Map<String, Object> map = (Map<String, Object>)get("owner");
-		return map == null ? null : (String)map.get("email");
-	}
+	public String getOwnerEmail() { return getAsString("owner.email");}
+	public String getOwnerId() { return getAsString("owner.id");}
 	
-	public String getOwnerId() {
-		Map<String, Object> map = (Map<String, Object>)get("owner");
-		return map == null ? null : (String)map.get("id");
-	}
-	
-	public String getRegionId() {
-		Map<String, Object> map = (Map<String, Object>)get("region");
-		return map == null ? null : (String)map.get("id");
-	}
-	
-	public String getRegionName() {
-		Map<String, Object> map = (Map<String, Object>)get("region");
-		return map == null ? null : (String)map.get("name");
-	}
+	public String getRegionId() { return getAsString("region.id");}
+	public String getRegionName() { return getAsString("region.name");}
 	
 	public long getRepoSize() { return getAsLong("repo_size");}
 	public long getSlugSize() { return getAsLong("slug_size");}

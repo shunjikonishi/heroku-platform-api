@@ -18,8 +18,10 @@ import jp.co.flect.heroku.transport.HttpRequest;
 import jp.co.flect.heroku.transport.HttpResponse;
 import jp.co.flect.heroku.platformapi.model.AbstractModel;
 import jp.co.flect.heroku.platformapi.model.Account;
+import jp.co.flect.heroku.platformapi.model.AccountFeature;
 import jp.co.flect.heroku.platformapi.model.Addon;
 import jp.co.flect.heroku.platformapi.model.App;
+import jp.co.flect.heroku.platformapi.model.AppFeature;
 import jp.co.flect.heroku.platformapi.model.AddonService;
 import jp.co.flect.heroku.platformapi.model.ConfigVars;
 import jp.co.flect.heroku.platformapi.model.RateLimits;
@@ -29,6 +31,7 @@ import jp.co.flect.heroku.platformapi.model.Collaborator;
 import jp.co.flect.heroku.platformapi.model.Formation;
 import jp.co.flect.heroku.platformapi.model.Dyno;
 import jp.co.flect.heroku.platformapi.model.Range;
+import jp.co.flect.heroku.platformapi.model.Plan;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -174,6 +177,7 @@ public class PlatformApi implements Serializable {
 		String requestId = res.getHeader("Request-Id");
 		if (range != null) {
 			String ar = res.getHeader("Accept-Ranges");
+System.out.println("ar: " + ar);
 			if (ar != null) {
 				String[] array = ar.split(",");
 				for (int i=0; i<array.length; i++) {
@@ -184,6 +188,8 @@ public class PlatformApi implements Serializable {
 			String nr = res.getHeader("Next-Range");
 			if (nr != null) {
 				range.setNextRange(new Range(nr));
+System.out.println("nr1: " + nr);
+System.out.println("nr2: " + range.getNextRange().toString());
 			}
 		}
 		
@@ -252,6 +258,28 @@ public class PlatformApi implements Serializable {
 		handleResponse("changePassword", res, ConfigVars.class);
 	}
 	
+	public List<AccountFeature> getAccountFeatureList() throws IOException {
+		return getAccountFeatureList(null);
+	}
+	
+	public List<AccountFeature> getAccountFeatureList(Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/account/features", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getAccountFeatureList", res, AccountFeature.class, range);
+	}
+	
+	public AccountFeature getAccountFeature(String idOrName) throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/account/features/" + idOrName));
+		return handleResponse("getAccountFeature", res, AccountFeature.class).get(0);
+	}
+	
+	public AccountFeature updateAccountFeature(String idOrName, boolean enabled) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/account/features/" + idOrName);
+		request.setParameter("enabled", enabled);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("updateAccountFeature", res, AccountFeature.class).get(0);
+	}
+	
 	//Addon
 	public List<Addon> getAddonList(String appName) throws IOException {
 		return getAddonList(appName, null);
@@ -268,6 +296,43 @@ public class PlatformApi implements Serializable {
 		return handleResponse("getAddon", res, Addon.class).get(0);
 	}
 	
+	public Addon addAddon(String appName, String planNameOrId) throws IOException {
+		return addAddon(appName, new Addon(planNameOrId));
+	}
+	
+	public Addon addAddon(String appName, Addon addon) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/addons");
+		applyAddonToRequest(request, addon);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("addAddon", res, Addon.class).get(0);
+	}
+	
+	public Addon updateAddon(String appName, String addonId, Addon addon) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/apps/" + appName + "/addons/" + addonId);
+		applyAddonToRequest(request, addon);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("updateAddon", res, Addon.class).get(0);
+	}
+	
+	public Addon deleteAddon(String appName, String addonId) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/apps/" + appName + "/addons/" + addonId);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("deleteAddon", res, Addon.class).get(0);
+	}
+	
+	private void applyAddonToRequest(HttpRequest request, Addon addon) {
+		if (addon.getPlanId() != null) {
+			request.setParameter("plan.id", addon.getPlanId());
+		}
+		if (addon.getPlanName() != null) {
+			request.setParameter("plan.name", addon.getPlanName());
+		}
+		if (addon.getConfig() != null) {
+			request.setParameter("config", addon.getConfig());
+		}
+	}
+	
+	
 	//AddonService
 	public List<AddonService> getAddonServiceList() throws IOException {
 		return getAddonServiceList(null);
@@ -282,6 +347,22 @@ public class PlatformApi implements Serializable {
 	public AddonService getAddonService(String idOrName) throws IOException {
 		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/addon-services/" + idOrName));
 		return handleResponse("getAddonService", res, AddonService.class).get(0);
+	}
+	
+	public List<Plan> getAddonPlanList(String idOrName) throws IOException {
+		return getAddonPlanList(idOrName, null);
+	}
+	
+	public List<Plan> getAddonPlanList(String idOrName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/addon-services/" + idOrName + "/plans", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getAddonPlanList", res, Plan.class, range);
+	}
+	
+	public Plan getAddonPlan(String idOrName, String plan) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/addon-services/" + idOrName + "/plans/" + plan);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getAddonPlan", res, Plan.class).get(0);
 	}
 	
 	//App
@@ -349,6 +430,29 @@ public class PlatformApi implements Serializable {
 		}
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("setConfigVars", res, ConfigVars.class).get(0);
+	}
+	
+	//AppFeature
+	public List<AppFeature> getAppFeatureList(String appName) throws IOException {
+		return getAppFeatureList(appName, null);
+	}
+	
+	public List<AppFeature> getAppFeatureList(String appName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/features", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getAppFeatureList", res, AppFeature.class, range);
+	}
+	
+	public AppFeature getAppFeature(String appName, String idOrName) throws IOException {
+		HttpResponse res = getTransport().execute(buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/features/" + idOrName));
+		return handleResponse("getAppFeature", res, AppFeature.class).get(0);
+	}
+	
+	public AppFeature updateAppFeature(String appName, String idOrName, boolean enabled) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/apps/" + appName + "/features/" + idOrName);
+		request.setParameter("enabled", enabled);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("updateAppFeature", res, AppFeature.class).get(0);
 	}
 	
 	//Release
@@ -458,10 +562,16 @@ public class PlatformApi implements Serializable {
 		return handleResponse("getDyno", res, Dyno.class).get(0);
 	}
 	
-	public void deleteDyno(String appName, String idOrName) throws IOException {
+	public void killDyno(String appName, String idOrName) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/apps/" + appName + "/dynos/" + idOrName);
 		HttpResponse res = getTransport().execute(request);
-		handleResponse("deleteDyno", res, Dyno.class);
+		handleResponse("killDyno", res, Dyno.class);
+	}
+	
+	public void restart(String appName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/apps/" + appName + "/dynos");
+		HttpResponse res = getTransport().execute(request);
+		handleResponse("restart", res, Dyno.class);
 	}
 	
 	public Dyno runDyno(String appName, String command) throws IOException {
@@ -471,4 +581,20 @@ public class PlatformApi implements Serializable {
 		return handleResponse("runDyno", res, Dyno.class).get(0);
 	}
 	
+	//Region
+	public List<Region> getRegionList() throws IOException {
+		return getRegionList(null);
+	}
+	
+	public List<Region> getRegionList(Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/regions", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getRegionList", res, Region.class, range);
+	}
+	
+	public Region getRegion(String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/regions/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getRegion", res, Region.class).get(0);
+	}
 }

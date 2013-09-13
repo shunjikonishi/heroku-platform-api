@@ -22,12 +22,14 @@ public class Range {
 	
 	private void parse(String str) {
 		int idx = str.indexOf(' ');
+System.out.println("parse1: " + str + ", " + idx);
 		if (idx == -1) {
 			this.field = str;
 			return;
 		}
 		this.field = str.substring(0, idx);
 		int idx2 = str.indexOf("..", idx);
+System.out.println("parse2: " + field + ", " + idx2);
 		if (idx2 == -1) {
 			return;
 		}
@@ -36,6 +38,7 @@ public class Range {
 			this.start = null;
 		}
 		int idx3 = str.indexOf(';', idx2 + 2);
+System.out.println("parse3: " + start + ", " + idx3);
 		if (idx3 == -1) {
 			this.end = str.substring(idx2 + 2).trim();
 		} else {
@@ -44,28 +47,34 @@ public class Range {
 		if (this.end.length() == 0) {
 			this.end = null;
 		}
+System.out.println("parse4: " + end + ", " + idx3);
 		if (idx3 == -1) {
 			return;
 		}
 		int idx4 = str.indexOf("max=", idx3);
+System.out.println("parse5: " + idx4);
 		if (idx4 != -1) {
-			int spos = idx4 + 1;
+			int spos = idx4 + "max=".length();
 			int epos = spos;
 			for (int i=spos; i<str.length(); i++) {
 				char c = str.charAt(i);
+System.out.println("parse6: " + c);
 				if (c >= '0' && c <= '9') {
 					epos++;
 				} else {
 					break;
 				}
 			}
+System.out.println("parse7: " + spos + ", " + epos);
 			if (epos > spos) {
 				this.max = Integer.parseInt(str.substring(spos, epos));
 			}
 		}
 		if (str.indexOf("order=desc", idx3) != -1) {
+System.out.println("parse8: sortAsc");
 			this.sortAsc = false;
 		} else if (str.indexOf("order=asc", idx3) != -1) {
+System.out.println("parse8: sortDesc");
 			this.sortAsc = true;
 		}
 	}

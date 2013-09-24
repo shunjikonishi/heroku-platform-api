@@ -1,12 +1,9 @@
 package jp.co.flect.heroku.transport;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.nio.charset.Charset;
 import jp.co.flect.heroku.json.JsonUtils;
 
 import org.apache.http.Header;
@@ -25,9 +22,6 @@ import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.conn.params.ConnRoutePNames;
-import org.apache.http.entity.mime.content.FileBody;
-import org.apache.http.entity.mime.content.StringBody;
-import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.BasicHttpParams;
@@ -71,7 +65,6 @@ public class HttpClientTransport implements Transport {
 		if (request.getParameters().size() > 0) {
 			if ("application/json".equals(request.getFirstHeader("content-type"))) {
 				String json = JsonUtils.serialize(request.getParameters());
-System.out.println("Post parameter: " + json);
 				((HttpEntityEnclosingRequestBase)method).setEntity(new StringEntity(json, "utf-8"));
 			} else {
 				List<NameValuePair> list = new ArrayList<NameValuePair>();

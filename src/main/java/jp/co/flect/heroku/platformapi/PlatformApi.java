@@ -32,6 +32,7 @@ import jp.co.flect.heroku.platformapi.model.Formation;
 import jp.co.flect.heroku.platformapi.model.Dyno;
 import jp.co.flect.heroku.platformapi.model.Range;
 import jp.co.flect.heroku.platformapi.model.Plan;
+import jp.co.flect.heroku.platformapi.model.OAuthClient;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -86,6 +87,26 @@ public class PlatformApi implements Serializable {
 		}
 	}
 	
+	public static String directAccess(String username, String password) throws IOException {
+		HttpRequest request = new HttpRequest(HttpRequest.Method.POST, HOST_API + "/oauth/authorizations");
+		String auth = Base64.encodeBase64String((username + ":" + password).getBytes("utf-8"));
+		
+		request.setHeader("Accept", "application/vnd.heroku+json; version=3");
+		request.setHeader("Authorization", "Basic " + auth);
+//		request.setHeader("Content-Type", "application/json");
+//		request.setParameter("description", "test");
+		
+		Transport tran = TransportFactory.createDefaultTransport();
+		HttpResponse res = tran.execute(request);
+System.out.println("directAccess: " + res.getStatus());
+		if (res.getStatus() == 200) {
+			return res.getBody();
+//			return fromJson(res.getBody());
+		} else {
+			throw new HerokuException(res.getBody());
+		}
+	}
+	
 	public static PlatformApi fromJson(String json) {
 		return JsonUtils.parse(json, PlatformApi.class);
 	}
@@ -111,9 +132,10 @@ public class PlatformApi implements Serializable {
 	 * //ToDo Not work with username and apiKey
 	 * https://devcenter.heroku.com/articles/platform-api-reference#authentication
 	 */
-	public PlatformApi(String apiKey) {
+	public PlatformApi(String email, String apiKey) {
 		try {
-			this.access_token = Base64.encodeBase64String((":" + apiKey).getBytes("utf-8"));
+			this.access_token = Base64.encodeBase64String((email + ":" + apiKey).getBytes("utf-8"));
+			this.token_type = "Basic";
 		} catch (UnsupportedEncodingException e) {
 			throw new IllegalStateException(e);
 		}
@@ -596,5 +618,48 @@ System.out.println("nr2: " + range.getNextRange().toString());
 		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/regions/" + idOrName);
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("getRegion", res, Region.class).get(0);
+	}
+	
+	//OAuthClient
+	public List<OAuthClient> getOAuthClientList() throws IOException {
+		return getOAuthClientList(null);
+	}
+	
+	public List<OAuthClient> getOAuthClientList(Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/oauth/clients", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getOAuthClientList", res, OAuthClient.class, range);
+	}
+	
+	public OAuthClient getOAuthClient(String id) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/oauth/clients/" + id);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getOAuthClient", res, OAuthClient.class).get(0);
+	}
+	
+	public OAuthClient addOAuthClient(String name, String redirectUrl) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/oauth/clients");
+		request.setParameter("name", name);
+		request.setParameter("redirect_url", redirectUrl);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("addOAuthClient", res, OAuthClient.class).get(0);
+	}
+	
+	public OAuthClient updateOAuthClient(OAuthClient obj) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/oauth/clients/" + obj.getId());
+		if (obj.getName() != null) {
+			request.setParameter("name", obj.getName());
+		}
+		if (obj.getRedirectUrl() != null) {
+			request.setParameter("redirect_url", obj.getRedirectUrl());
+		}
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("updateOAuthClient", res, OAuthClient.class).get(0);
+	}
+	
+	public void deleteOAuthClient(String id) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/oauth/clients/" + id);
+		HttpResponse res = getTransport().execute(request);
+		handleResponse("updateOAuthClient", res, OAuthClient.class);
 	}
 }

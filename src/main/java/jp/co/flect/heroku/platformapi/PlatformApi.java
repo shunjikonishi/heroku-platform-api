@@ -72,7 +72,7 @@ public class PlatformApi implements Serializable {
 		return HOST_ID + "/oauth/authorize?client_id=" + clientId + "&response_type=code&scope=" + buf.toString();
 	}
 	
-	public static PlatformApi authenticate(String secret, String code) throws IOException {
+	public static PlatformApi fromOAuth(String secret, String code) throws IOException {
 		HttpRequest request = new HttpRequest(HttpRequest.Method.POST, HOST_ID + "/oauth/token");
 		request.setParameter("grant_type", "authorization_code");
 		request.setParameter("code", code);
@@ -81,34 +81,52 @@ public class PlatformApi implements Serializable {
 		Transport tran = TransportFactory.createDefaultTransport();
 		HttpResponse res = tran.execute(request);
 		if (res.getStatus() == 200) {
-			return fromJson(res.getBody());
+			return JsonUtils.parse(res.getBody(), PlatformApi.class);
 		} else {
 			throw new HerokuException(res.getBody());
 		}
 	}
 	
-	public static String directAccess(String username, String password) throws IOException {
+	public static PlatformApi fromPassword(String username, String password) throws IOException {
 		HttpRequest request = new HttpRequest(HttpRequest.Method.POST, HOST_API + "/oauth/authorizations");
-		String auth = Base64.encodeBase64String((username + ":" + password).getBytes("utf-8"));
+		String auth = base64(username + ":" + password);
 		
 		request.setHeader("Accept", "application/vnd.heroku+json; version=3");
 		request.setHeader("Authorization", "Basic " + auth);
-//		request.setHeader("Content-Type", "application/json");
-//		request.setParameter("description", "test");
 		
 		Transport tran = TransportFactory.createDefaultTransport();
 		HttpResponse res = tran.execute(request);
-System.out.println("directAccess: " + res.getStatus());
-		if (res.getStatus() == 200) {
-			return res.getBody();
-//			return fromJson(res.getBody());
+		if (res.getStatus() >= 200 && res.getStatus() < 300) {
+			Map<String, Object> map = JsonUtils.parse(res.getBody());
+			Map<String, Object> access_token = (Map<String, Object>)map.get("access_token");
+			if (access_token == null) {
+				throw new HerokuException("Invalid authorization response: " + res.getBody());
+			}
+			String token = (String)access_token.get("token");
+			if (token == null) {
+				throw new HerokuException("Invalid authorization response: " + res.getBody());
+			}
+			return new PlatformApi(token);
 		} else {
-			throw new HerokuException(res.getBody());
+			throw new HerokuException(res.getStatus() + ": " + res.getBody());
 		}
 	}
 	
-	public static PlatformApi fromJson(String json) {
-		return JsonUtils.parse(json, PlatformApi.class);
+	public static PlatformApi fromApiToken(String username, String password) {
+		return new PlatformApi(username, password);
+	}
+	
+	private static String base64(String str) {
+		try {
+			// To use this library in Playframework1, it is necessary to replace "\r\n" to "".
+			// Because Play uses commons-codec-1.4 and the behavior of Base64#encodeBase64String was changed from 1.5.
+			// In version 1.4 or earlier, this method returns chunked string.
+			// See.
+			// http://commons.apache.org/proper/commons-codec/apidocs/org/apache/commons/codec/binary/Base64.html#encodeBase64String(byte[])
+			return Base64.encodeBase64String(str.getBytes("utf-8")).replaceAll("\r\n", "");
+		} catch (UnsupportedEncodingException e) {
+			throw new IllegalStateException();
+		}
 	}
 	
 	private String access_token;
@@ -125,20 +143,17 @@ System.out.println("directAccess: " + res.getStatus());
 	private Account account;
 	private String loginedEmail;
 	
-	public PlatformApi() {
+	private PlatformApi() {
 	}
 	
-	/**
-	 * //ToDo Not work with username and apiKey
-	 * https://devcenter.heroku.com/articles/platform-api-reference#authentication
-	 */
-	public PlatformApi(String email, String apiKey) {
-		try {
-			this.access_token = Base64.encodeBase64String((email + ":" + apiKey).getBytes("utf-8"));
-			this.token_type = "Basic";
-		} catch (UnsupportedEncodingException e) {
-			throw new IllegalStateException(e);
-		}
+	private PlatformApi(String email, String apiKey) {
+		this.access_token = base64(email + ":" + apiKey);
+		this.token_type = "Basic";
+	}
+	
+	private PlatformApi(String token) {
+		this.access_token = base64(":" + token);
+		this.token_type = "Basic";
 	}
 	
 	public Transport getTransport() { return this.transport;}
@@ -199,7 +214,6 @@ System.out.println("directAccess: " + res.getStatus());
 		String requestId = res.getHeader("Request-Id");
 		if (range != null) {
 			String ar = res.getHeader("Accept-Ranges");
-System.out.println("ar: " + ar);
 			if (ar != null) {
 				String[] array = ar.split(",");
 				for (int i=0; i<array.length; i++) {
@@ -210,8 +224,6 @@ System.out.println("ar: " + ar);
 			String nr = res.getHeader("Next-Range");
 			if (nr != null) {
 				range.setNextRange(new Range(nr));
-System.out.println("nr1: " + nr);
-System.out.println("nr2: " + range.getNextRange().toString());
 			}
 		}
 		

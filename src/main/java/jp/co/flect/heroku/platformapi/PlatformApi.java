@@ -652,7 +652,7 @@ public class PlatformApi implements Serializable {
 	public OAuthClient addOAuthClient(String name, String redirectUrl) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/oauth/clients");
 		request.setParameter("name", name);
-		request.setParameter("redirect_url", redirectUrl);
+		request.setParameter("redirect_uri", redirectUrl);
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("addOAuthClient", res, OAuthClient.class).get(0);
 	}
@@ -662,8 +662,8 @@ public class PlatformApi implements Serializable {
 		if (obj.getName() != null) {
 			request.setParameter("name", obj.getName());
 		}
-		if (obj.getRedirectUrl() != null) {
-			request.setParameter("redirect_url", obj.getRedirectUrl());
+		if (obj.getRedirectUri() != null) {
+			request.setParameter("redirect_uri", obj.getRedirectUri());
 		}
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("updateOAuthClient", res, OAuthClient.class).get(0);

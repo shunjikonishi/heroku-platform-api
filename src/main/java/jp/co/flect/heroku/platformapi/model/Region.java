@@ -3,7 +3,7 @@ package jp.co.flect.heroku.platformapi.model;
 import java.util.Map;
 import java.util.Date;
 
-public class Region extends AbstractModel {
+public class Region extends BasicModel {
 	
 	public static final Region US = new Region("us");
 	public static final Region EU = new Region("eu");
@@ -27,11 +27,7 @@ public class Region extends AbstractModel {
 		set("name", name);
 	}
 	
-	public String getId() { return getAsString("id");}
 	public String getName() { return getAsString("name");}
-	
-	public Date getCreatedAt() { return getAsDate("created_at");}
-	public Date getUpdatedAt() { return getAsDate("updated_at");}
 	
 	public String getDescription() { return getAsString("description");}
 	

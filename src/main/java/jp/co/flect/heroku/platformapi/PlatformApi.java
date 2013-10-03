@@ -33,6 +33,7 @@ import jp.co.flect.heroku.platformapi.model.Dyno;
 import jp.co.flect.heroku.platformapi.model.Range;
 import jp.co.flect.heroku.platformapi.model.Plan;
 import jp.co.flect.heroku.platformapi.model.OAuthClient;
+import jp.co.flect.heroku.platformapi.model.Key;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -672,6 +673,36 @@ public class PlatformApi implements Serializable {
 	public void deleteOAuthClient(String id) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/oauth/clients/" + id);
 		HttpResponse res = getTransport().execute(request);
-		handleResponse("updateOAuthClient", res, OAuthClient.class);
+		handleResponse("deleteOAuthClient", res, OAuthClient.class);
+	}
+	
+	//Key
+	public List<Key> getKeyList() throws IOException {
+		return getKeyList(null);
+	}
+	
+	public List<Key> getKeyList(Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/account/keys", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getKeyList", res, Key.class, range);
+	}
+	
+	public Key getKey(String id) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/account/keys/" + id);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getKey", res, Key.class).get(0);
+	}
+	
+	public Key addKey(String publicKey) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/account/keys");
+		request.setParameter("public_key", publicKey);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("addKey", res, Key.class).get(0);
+	}
+	
+	public void deleteKey(String id) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/account/keys/" + id);
+		HttpResponse res = getTransport().execute(request);
+		handleResponse("deleteKey", res, Key.class);
 	}
 }

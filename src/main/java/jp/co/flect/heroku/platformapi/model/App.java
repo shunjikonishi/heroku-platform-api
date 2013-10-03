@@ -3,7 +3,7 @@ package jp.co.flect.heroku.platformapi.model;
 import java.util.Map;
 import java.util.Date;
 
-public class App extends AbstractModel {
+public class App extends BasicModel {
 	
 	public App() {
 		super();
@@ -13,11 +13,8 @@ public class App extends AbstractModel {
 		super(map);
 	}
 	
-	public String getId() { return getAsString("id");}
 	public String getName() { return getAsString("name");}
 	
-	public Date getCreatedAt() { return getAsDate("created_at");}
-	public Date getUpdatedAt() { return getAsDate("updated_at");}
 	public Date getArchivedAt() { return getAsDate("archived_at");}
 	public Date getReleasedAt() { return getAsDate("released_at");}
 	

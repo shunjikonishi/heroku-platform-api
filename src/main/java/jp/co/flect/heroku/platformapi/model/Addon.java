@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Date;
 
-public class Addon extends AbstractModel {
+public class Addon extends BasicModel {
 	
 	public Addon() {
 		super();
@@ -21,10 +21,6 @@ public class Addon extends AbstractModel {
 			setPlanId(planNameOrId);
 		}
 	}
-	
-	public String getId() { return getAsString("id");}
-	public Date getCreatedAt() { return getAsDate("created_at");}
-	public Date getUpdatedAt() { return getAsDate("updated_at");}
 	
 	public Map<String, Object> getConfig() { return (Map<String, Object>)get("config");}
 	

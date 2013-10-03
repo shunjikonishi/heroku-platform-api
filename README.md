@@ -23,19 +23,19 @@ Implemented features
 - Dyno
 - Plan
 - Region
+- Key
+- OAuthClient
 
 Not implemented yet
 -------------------
-This list is based on [devcenter document](https://devcenter.heroku.com/articles/platform-api-reference#app-feature). (2013-09-11)
+This list is based on [devcenter document](https://devcenter.heroku.com/articles/platform-api-reference#app-feature). (2013-10-03)
 
 - Account.update
 - AppTransfer
 - Domain
-- Key
 - LogDrain
 - LogSession
 - OAuthAuthorization
-- OAuthClient
 - OAuthToken
 - SSLEndpoint
-
+- Stack

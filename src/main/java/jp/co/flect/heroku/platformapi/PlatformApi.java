@@ -34,6 +34,7 @@ import jp.co.flect.heroku.platformapi.model.Range;
 import jp.co.flect.heroku.platformapi.model.Plan;
 import jp.co.flect.heroku.platformapi.model.OAuthClient;
 import jp.co.flect.heroku.platformapi.model.Key;
+import jp.co.flect.heroku.platformapi.model.Stack;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -631,6 +632,23 @@ public class PlatformApi implements Serializable {
 		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/regions/" + idOrName);
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("getRegion", res, Region.class).get(0);
+	}
+	
+	//Stack
+	public List<Stack> getStackList() throws IOException {
+		return getStackList(null);
+	}
+	
+	public List<Stack> getStackList(Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/stacks", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getStackList", res, Stack.class, range);
+	}
+	
+	public Stack getStack(String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/stacks/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getStack", res, Stack.class).get(0);
 	}
 	
 	//OAuthClient

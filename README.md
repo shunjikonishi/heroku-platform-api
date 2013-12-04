@@ -25,6 +25,7 @@ Implemented features
 - Region
 - Key
 - OAuthClient
+- Stack
 
 Not implemented yet
 -------------------
@@ -38,4 +39,3 @@ This list is based on [devcenter document](https://devcenter.heroku.com/articles
 - OAuthAuthorization
 - OAuthToken
 - SSLEndpoint
-- Stack

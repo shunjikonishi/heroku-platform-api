@@ -21,7 +21,9 @@ import jp.co.flect.heroku.platformapi.model.Account;
 import jp.co.flect.heroku.platformapi.model.AccountFeature;
 import jp.co.flect.heroku.platformapi.model.Addon;
 import jp.co.flect.heroku.platformapi.model.App;
+import jp.co.flect.heroku.platformapi.model.AppTransfer;
 import jp.co.flect.heroku.platformapi.model.AppFeature;
+import jp.co.flect.heroku.platformapi.model.Domain;
 import jp.co.flect.heroku.platformapi.model.AddonService;
 import jp.co.flect.heroku.platformapi.model.ConfigVars;
 import jp.co.flect.heroku.platformapi.model.RateLimits;
@@ -89,6 +91,21 @@ public class PlatformApi implements Serializable {
 		}
 	}
 	
+	public static PlatformApi fromRefreshToken(String secret, String refreshToken) throws IOException {
+		HttpRequest request = new HttpRequest(HttpRequest.Method.POST, HOST_ID + "/oauth/token");
+		request.setParameter("grant_type", "refresh_token");
+		request.setParameter("refresh_token", refreshToken);
+		request.setParameter("client_secret", secret);
+		
+		Transport tran = TransportFactory.createDefaultTransport();
+		HttpResponse res = tran.execute(request);
+		if (res.getStatus() == 200) {
+			return JsonUtils.parse(res.getBody(), PlatformApi.class);
+		} else {
+			throw new HerokuException(res.getBody());
+		}
+	}
+	
 	public static PlatformApi fromPassword(String username, String password) throws IOException {
 		HttpRequest request = new HttpRequest(HttpRequest.Method.POST, HOST_API + "/oauth/authorizations");
 		String auth = base64(username + ":" + password);
@@ -114,8 +131,8 @@ public class PlatformApi implements Serializable {
 		}
 	}
 	
-	public static PlatformApi fromApiToken(String username, String password) {
-		return new PlatformApi(username, password);
+	public static PlatformApi fromApiKey(String username, String apiKey) {
+		return new PlatformApi(username, apiKey);
 	}
 	
 	private static String base64(String str) {
@@ -171,6 +188,8 @@ public class PlatformApi implements Serializable {
 			System.out.println("PlatformApi - " + name + "(" + t + "ms): " + value);
 		}
 	}
+	
+	public String getRefreshToken() { return this.refresh_token;}
 	
 	public String getAuthorization() {
 		return this.token_type == null ? this.access_token : this.token_type + " " + this.access_token;
@@ -286,6 +305,26 @@ public class PlatformApi implements Serializable {
 		return this.account;
 	}
 	
+	public Account updateAccountEmail(String newEmail) throws IOException {
+		return updateAccount(newEmail, null);
+	}
+	
+	public Account updateAccountAllowTracking(boolean newAllowTracking) throws IOException {
+		return updateAccount(null, newAllowTracking);
+	}
+	
+	public Account updateAccount(String newEmail, Boolean newAllowTracking) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/account");
+		if (newEmail != null) {
+			request.setParameter("email", newEmail);
+		}
+		if (newAllowTracking != null) {
+			request.setParameter("allow_tracking", newAllowTracking.toString());
+		}
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("updateAccount", res, Account.class).get(0);
+	}
+	
 	public void changePassword(String currentPassword, String newPassword) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.PUT, "/account/password");
 		request.setParameter("current_password", currentPassword);
@@ -367,7 +406,6 @@ public class PlatformApi implements Serializable {
 			request.setParameter("config", addon.getConfig());
 		}
 	}
-	
 	
 	//AddonService
 	public List<AddonService> getAddonServiceList() throws IOException {
@@ -552,6 +590,36 @@ public class PlatformApi implements Serializable {
 		return handleResponse("deleteCollaborator", res, Collaborator.class).get(0);
 	}
 	
+	//Domain
+	public List<Domain> getDomainList(String appName) throws IOException {
+		return getDomainList(appName, null);
+	}
+	
+	public List<Domain> getDomainList(String appName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/domains", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getDomainList", res, Domain.class, range);
+	}
+	
+	public Domain getDomain(String appName, String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/domains/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getDomain", res, Domain.class).get(0);
+	}
+	
+	public Domain addDomain(String appName, String hostName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/domains");
+		request.setParameter("hostname", hostName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("addDomain", res, Domain.class).get(0);
+	}
+	
+	public Domain deleteDomain(String appName, String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/apps/" + appName + "/domains/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("deleteDomain", res, Domain.class).get(0);
+	}
+	
 	//Formation
 	public List<Formation> getFormationList(String appName) throws IOException {
 		return getFormationList(appName, null);
@@ -688,10 +756,10 @@ public class PlatformApi implements Serializable {
 		return handleResponse("updateOAuthClient", res, OAuthClient.class).get(0);
 	}
 	
-	public void deleteOAuthClient(String id) throws IOException {
+	public OAuthClient deleteOAuthClient(String id) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/oauth/clients/" + id);
 		HttpResponse res = getTransport().execute(request);
-		handleResponse("deleteOAuthClient", res, OAuthClient.class);
+		return handleResponse("deleteOAuthClient", res, OAuthClient.class).get(0);
 	}
 	
 	//Key
@@ -718,9 +786,51 @@ public class PlatformApi implements Serializable {
 		return handleResponse("addKey", res, Key.class).get(0);
 	}
 	
-	public void deleteKey(String id) throws IOException {
+	public Key deleteKey(String id) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/account/keys/" + id);
 		HttpResponse res = getTransport().execute(request);
-		handleResponse("deleteKey", res, Key.class);
+		return handleResponse("deleteKey", res, Key.class).get(0);
+	}
+	
+	//AppTransfer
+	public AppTransfer createAppTransfer(String appName, String recipientIdOrMail) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/account/app-transfers");
+		request.setParameter("app.name", appName);
+		if (recipientIdOrMail.indexOf('@') != -1) {
+			request.setParameter("recipient.email", recipientIdOrMail);
+		} else {
+			request.setParameter("recipient.id", recipientIdOrMail);
+		}
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("appTransfer", res, AppTransfer.class).get(0);
+	}
+	
+	public List<AppTransfer> getAppTransferList() throws IOException {
+		return getAppTransferList(null);
+	}
+	
+	public List<AppTransfer> getAppTransferList(Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/account/app-transfers", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getAppTransferList", res, AppTransfer.class, range);
+	}
+	
+	public AppTransfer getAppTransfer(String id) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/account/app-transfers/" + id);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getAppTransfer", res, AppTransfer.class).get(0);
+	}
+	
+	public AppTransfer updateAppTransfer(String id, AppTransfer.State state) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/account/app-transfers/" + id);
+		request.setParameter("state", state.toString());
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("updateAppTransfer", res, AppTransfer.class).get(0);
+	}
+	
+	public AppTransfer deleteAppTransfer(String id) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/account/app-transfers/" + id);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("deleteAppTransfer", res, AppTransfer.class).get(0);
 	}
 }

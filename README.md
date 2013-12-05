@@ -16,24 +16,23 @@ Implemented features
 - AddonService
 - App
 - AppFeature
-- Config
-- Release
+- AppTransfer
 - Collaborator
-- Formation
+- Config
+- Domain
 - Dyno
-- Plan
-- Region
+- Formation
 - Key
 - OAuthClient
+- Plan
+- Region
+- Release
 - Stack
 
 Not implemented yet
 -------------------
-This list is based on [devcenter document](https://devcenter.heroku.com/articles/platform-api-reference#app-feature). (2013-10-03)
+This list is based on [devcenter document](https://devcenter.heroku.com/articles/platform-api-reference). (2013-12-05)
 
-- Account.update
-- AppTransfer
-- Domain
 - LogDrain
 - LogSession
 - OAuthAuthorization

@@ -23,5 +23,6 @@ public class OAuthClient extends BasicModel {
 	
 	public String getSecret() { return getAsString("secret");}
 	public boolean isTrusted() { return getAsBoolean("trusted");}
+	public boolean isIgnoresDelinquent() { return getAsBoolean("ignores_delinquent");}
 	
 }

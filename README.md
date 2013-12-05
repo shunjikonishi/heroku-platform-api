@@ -23,18 +23,18 @@ Implemented features
 - Dyno
 - Formation
 - Key
+- LogDrain
+- LogSession
 - OAuthClient
 - Plan
 - Region
 - Release
+- SSLEndpoint
 - Stack
 
 Not implemented yet
 -------------------
 This list is based on [devcenter document](https://devcenter.heroku.com/articles/platform-api-reference). (2013-12-05)
 
-- LogDrain
-- LogSession
 - OAuthAuthorization
 - OAuthToken
-- SSLEndpoint

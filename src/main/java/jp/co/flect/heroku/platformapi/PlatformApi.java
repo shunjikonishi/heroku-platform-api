@@ -26,6 +26,8 @@ import jp.co.flect.heroku.platformapi.model.AppFeature;
 import jp.co.flect.heroku.platformapi.model.Domain;
 import jp.co.flect.heroku.platformapi.model.AddonService;
 import jp.co.flect.heroku.platformapi.model.ConfigVars;
+import jp.co.flect.heroku.platformapi.model.LogDrain;
+import jp.co.flect.heroku.platformapi.model.LogSession;
 import jp.co.flect.heroku.platformapi.model.RateLimits;
 import jp.co.flect.heroku.platformapi.model.Region;
 import jp.co.flect.heroku.platformapi.model.Release;
@@ -36,6 +38,7 @@ import jp.co.flect.heroku.platformapi.model.Range;
 import jp.co.flect.heroku.platformapi.model.Plan;
 import jp.co.flect.heroku.platformapi.model.OAuthClient;
 import jp.co.flect.heroku.platformapi.model.Key;
+import jp.co.flect.heroku.platformapi.model.SSLEndpoint;
 import jp.co.flect.heroku.platformapi.model.Stack;
 
 import org.apache.commons.codec.binary.Base64;
@@ -620,6 +623,36 @@ public class PlatformApi implements Serializable {
 		return handleResponse("deleteDomain", res, Domain.class).get(0);
 	}
 	
+	//LogDrain
+	public List<LogDrain> getLogDrainList(String appName) throws IOException {
+		return getLogDrainList(appName, null);
+	}
+	
+	public List<LogDrain> getLogDrainList(String appName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/log-drains", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getLogDrainList", res, LogDrain.class, range);
+	}
+	
+	public LogDrain getLogDrain(String appName, String idOrUrl) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/log-drains/" + idOrUrl);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getLogDrain", res, LogDrain.class).get(0);
+	}
+	
+	public LogDrain addLogDrain(String appName, String url) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/log-drains");
+		request.setParameter("url", url);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("addLogDrain", res, LogDrain.class).get(0);
+	}
+	
+	public LogDrain deleteLogDrain(String appName, String idOrUrl) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/apps/" + appName + "/log-drains/" + idOrUrl);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("deleteLogDrain", res, LogDrain.class).get(0);
+	}
+	
 	//Formation
 	public List<Formation> getFormationList(String appName) throws IOException {
 		return getFormationList(appName, null);
@@ -802,7 +835,7 @@ public class PlatformApi implements Serializable {
 			request.setParameter("recipient.id", recipientIdOrMail);
 		}
 		HttpResponse res = getTransport().execute(request);
-		return handleResponse("appTransfer", res, AppTransfer.class).get(0);
+		return handleResponse("createAppTransfer", res, AppTransfer.class).get(0);
 	}
 	
 	public List<AppTransfer> getAppTransferList() throws IOException {
@@ -832,5 +865,72 @@ public class PlatformApi implements Serializable {
 		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/account/app-transfers/" + id);
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("deleteAppTransfer", res, AppTransfer.class).get(0);
+	}
+	
+	//LogSession
+	public LogSession createLogSession(String appName) throws IOException {
+		return createLogSession(appName, new LogSession());
+	}
+	
+	public LogSession createLogSession(String appName, LogSession option) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/log-sessions");
+		if (option.getDyno() != null) {
+			request.setParameter("dyno", option.getDyno());
+		}
+		if (option.getLines() > 0) {
+			request.setParameter("lines", option.getLines());
+		}
+		if (option.getSource() != null) {
+			request.setParameter("source", option.getSource());
+		}
+		if (option.isTail()) {
+			request.setParameter("tail", "true");
+		}
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("createLogSession", res, LogSession.class).get(0);
+	}
+	
+	//SSLEndpoint
+	public List<SSLEndpoint> getSSLEndpointList(String appName) throws IOException {
+		return getSSLEndpointList(appName, null);
+	}
+	
+	public List<SSLEndpoint> getSSLEndpointList(String appName, Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/ssl-endpoints", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getSSLEndpointList", res, SSLEndpoint.class, range);
+	}
+	
+	public SSLEndpoint getSSLEndpoint(String appName, String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/ssl-endpoints/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getSSLEndpoint", res, SSLEndpoint.class).get(0);
+	}
+	
+	public SSLEndpoint addSSLEndpoint(String appName, String crt, String key) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/ssl-endpoints");
+		request.setParameter("certificate_chain", crt);
+		request.setParameter("private_key", key);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("addSSLEndpoint", res, SSLEndpoint.class).get(0);
+	}
+	
+	public SSLEndpoint updateSSLEndpoint(String appName, String idOrName, String crt, String key, boolean rollback) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.PATCH, "/apps/" + appName + "/ssl-endpoints/" + idOrName);
+		if (crt != null) {
+			request.setParameter("certificate_chain", crt);
+		}
+		if (key != null) {
+			request.setParameter("private_key", key);
+		}
+		request.setParameter("rollback", rollback);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("addSSLEndpoint", res, SSLEndpoint.class).get(0);
+	}
+	
+	public SSLEndpoint deleteSSLEndpoint(String appName, String idOrName) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/apps/" + appName + "/ssl-endpoints/" + idOrName);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("deleteSSLEndpoint", res, SSLEndpoint.class).get(0);
 	}
 }

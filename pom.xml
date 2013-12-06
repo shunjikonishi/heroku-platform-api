@@ -6,7 +6,7 @@
 	
 	<groupId>jp.co.flect</groupId>
 	<artifactId>heroku-platform-api</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<version>0.9</version>
 	<packaging>jar</packaging>
 
 	<name>heroku-platform-api</name>
@@ -87,6 +87,21 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.9.1</version>
+				<configuration>
+					<doclet>jp.co.flect.doclets.github.Standard</doclet>
+					<docletArtifact>
+						<groupId>jp.co.flect</groupId>
+						<artifactId>githubDoclet</artifactId>
+						<version>1.0</version>
+					</docletArtifact>
+					<additionalparam>-github https://github.com/shunjikonishi/heroku-platform-api/tree/version-${project.version}/src/main/java</additionalparam>
+					<useStandardDocletOptions>true</useStandardDocletOptions>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>com.github.github</groupId>

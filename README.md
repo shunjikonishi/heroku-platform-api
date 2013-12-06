@@ -1,14 +1,11 @@
-Heroku Platform API
-===================
+# Heroku Platform API
 
-Overview
---------
+## Overview
 Java wrapper of Heroku Platform API.
 
 https://devcenter.heroku.com/articles/platform-api-reference
 
-Implemented features
---------------------
+## Implemented features
 - RateLimitRating
 - Account
 - AccountFeature
@@ -25,16 +22,20 @@ Implemented features
 - Key
 - LogDrain
 - LogSession
+- OAuthAuthorization
 - OAuthClient
+- OAuthToken
 - Plan
 - Region
 - Release
 - SSLEndpoint
 - Stack
 
-Not implemented yet
--------------------
-This list is based on [devcenter document](https://devcenter.heroku.com/articles/platform-api-reference). (2013-12-05)
+## Not implemented features
+None(2013-12-06)
 
-- OAuthAuthorization
-- OAuthToken
+## Usage
+
+
+## License
+MIT

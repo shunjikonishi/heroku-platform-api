@@ -13,7 +13,7 @@ public abstract class AbstractModel implements Serializable {
 	
 	private static final long serialVersionUID = -281893291198955622L;;
 	
-	private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+	private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZ";
 	
 	private Map<String, Object> map;
 	
@@ -101,7 +101,11 @@ public abstract class AbstractModel implements Serializable {
 			return (Date)o;
 		} else if (o instanceof String) {
 			try {
-				Date d = new SimpleDateFormat(DATE_FORMAT).parse((String)o);
+				String s = (String)o;
+				if (s.endsWith("Z")) {
+					s = s.substring(0, s.length() - 1) + "+0000";
+				}
+				Date d = new SimpleDateFormat(DATE_FORMAT).parse(s);
 				set(name, d);
 				return d;
 			} catch (ParseException e) {

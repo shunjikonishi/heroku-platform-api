@@ -17,7 +17,7 @@ public class DirectAccessTest {
 	public static final String USERNAME = System.getenv("HEROKU_USERNAME");
 	public static final String PASSWORD = System.getenv("HEROKU_PASSWORD");
 	
-	@Test
+//	@Test
 	public void app() throws Exception {
 		System.out.println(USERNAME + ", " + PASSWORD);
 		PlatformApi api = PlatformApi.fromPassword(USERNAME, PASSWORD);

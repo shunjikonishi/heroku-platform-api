@@ -20,54 +20,48 @@ import jp.co.flect.heroku.platformapi.model.AbstractModel;
 import jp.co.flect.heroku.platformapi.model.Account;
 import jp.co.flect.heroku.platformapi.model.AccountFeature;
 import jp.co.flect.heroku.platformapi.model.Addon;
-import jp.co.flect.heroku.platformapi.model.App;
-import jp.co.flect.heroku.platformapi.model.AppTransfer;
-import jp.co.flect.heroku.platformapi.model.AppFeature;
-import jp.co.flect.heroku.platformapi.model.Domain;
 import jp.co.flect.heroku.platformapi.model.AddonService;
+import jp.co.flect.heroku.platformapi.model.App;
+import jp.co.flect.heroku.platformapi.model.AppFeature;
+import jp.co.flect.heroku.platformapi.model.AppTransfer;
+import jp.co.flect.heroku.platformapi.model.Collaborator;
 import jp.co.flect.heroku.platformapi.model.ConfigVars;
+import jp.co.flect.heroku.platformapi.model.Domain;
+import jp.co.flect.heroku.platformapi.model.Dyno;
+import jp.co.flect.heroku.platformapi.model.Formation;
+import jp.co.flect.heroku.platformapi.model.Key;
 import jp.co.flect.heroku.platformapi.model.LogDrain;
 import jp.co.flect.heroku.platformapi.model.LogSession;
+import jp.co.flect.heroku.platformapi.model.OAuthAuthorization;
+import jp.co.flect.heroku.platformapi.model.OAuthClient;
+import jp.co.flect.heroku.platformapi.model.OAuthToken;
+import jp.co.flect.heroku.platformapi.model.Plan;
+import jp.co.flect.heroku.platformapi.model.Range;
 import jp.co.flect.heroku.platformapi.model.RateLimits;
 import jp.co.flect.heroku.platformapi.model.Region;
 import jp.co.flect.heroku.platformapi.model.Release;
-import jp.co.flect.heroku.platformapi.model.Collaborator;
-import jp.co.flect.heroku.platformapi.model.Formation;
-import jp.co.flect.heroku.platformapi.model.Dyno;
-import jp.co.flect.heroku.platformapi.model.Range;
-import jp.co.flect.heroku.platformapi.model.Plan;
-import jp.co.flect.heroku.platformapi.model.OAuthClient;
-import jp.co.flect.heroku.platformapi.model.Key;
+import jp.co.flect.heroku.platformapi.model.Scope;
 import jp.co.flect.heroku.platformapi.model.SSLEndpoint;
 import jp.co.flect.heroku.platformapi.model.Stack;
 
 import org.apache.commons.codec.binary.Base64;
 
+/**
+ * Heroku Platform API
+ * @see <a href="https://devcenter.heroku.com/articles/platform-api-reference" target="_blank">Dev Center</a>
+ */
 public class PlatformApi implements Serializable {
 	
 	private  static final long serialVersionUID = 6015604605302262585L;
 	
+	/** https://id.heroku.com */
 	public static final String HOST_ID  = "https://id.heroku.com";
+	/** https://api.heroku.com */
 	public static final String HOST_API = "https://api.heroku.com";
 	
-	public enum Scope {
-		Global("global"),
-		Identity("identity"),
-		Read("read"),
-		Write("write"),
-		ReadProtected("read-protected"),
-		WriteProtected("write-protected")
-		;
-		
-		private String value;
-		
-		private Scope(String value) {
-			this.value = value;
-		}
-		
-		public String toString() { return this.value;}
-	}
-	
+	/**
+	 * Return the url of Heroku OAuth authentication page.
+	 */
 	public static String getOAuthUrl(String clientId, Scope... scope) {
 		StringBuilder buf = new StringBuilder();
 		for (Scope s : scope) {
@@ -79,6 +73,9 @@ public class PlatformApi implements Serializable {
 		return HOST_ID + "/oauth/authorize?client_id=" + clientId + "&response_type=code&scope=" + buf.toString();
 	}
 	
+	/**
+	 * Authenticate with OAuth grant code
+	 */
 	public static PlatformApi fromOAuth(String secret, String code) throws IOException {
 		HttpRequest request = new HttpRequest(HttpRequest.Method.POST, HOST_ID + "/oauth/token");
 		request.setParameter("grant_type", "authorization_code");
@@ -94,6 +91,9 @@ public class PlatformApi implements Serializable {
 		}
 	}
 	
+	/**
+	 * Authenticate with refresh_token
+	 */
 	public static PlatformApi fromRefreshToken(String secret, String refreshToken) throws IOException {
 		HttpRequest request = new HttpRequest(HttpRequest.Method.POST, HOST_ID + "/oauth/token");
 		request.setParameter("grant_type", "refresh_token");
@@ -109,6 +109,9 @@ public class PlatformApi implements Serializable {
 		}
 	}
 	
+	/**
+	 * Authenticate with username and password
+	 */
 	public static PlatformApi fromPassword(String username, String password) throws IOException {
 		HttpRequest request = new HttpRequest(HttpRequest.Method.POST, HOST_API + "/oauth/authorizations");
 		String auth = base64(username + ":" + password);
@@ -128,14 +131,24 @@ public class PlatformApi implements Serializable {
 			if (token == null) {
 				throw new HerokuException("Invalid authorization response: " + res.getBody());
 			}
-			return new PlatformApi(token);
+			return new PlatformApi("Basic", base64(":" + token));
 		} else {
 			throw new HerokuException(res.getStatus() + ": " + res.getBody());
 		}
 	}
 	
+	/**
+	 * Construct with username and API Key(heroku auth:token)
+	 */
 	public static PlatformApi fromApiKey(String username, String apiKey) {
-		return new PlatformApi(username, apiKey);
+		return new PlatformApi("Basic", base64(username + ":" + apiKey));
+	}
+	
+	/**
+	 * Construct with give access_token
+	 */
+	public static PlatformApi fromAccessToken(String accessToken) {
+		return new PlatformApi("Bearer", accessToken);
 	}
 	
 	private static String base64(String str) {
@@ -168,14 +181,9 @@ public class PlatformApi implements Serializable {
 	private PlatformApi() {
 	}
 	
-	private PlatformApi(String email, String apiKey) {
-		this.access_token = base64(email + ":" + apiKey);
-		this.token_type = "Basic";
-	}
-	
-	private PlatformApi(String token) {
-		this.access_token = base64(":" + token);
-		this.token_type = "Basic";
+	private PlatformApi(String tokenType, String token) {
+		this.token_type = tokenType;
+		this.access_token = token;
 	}
 	
 	public Transport getTransport() { return this.transport;}
@@ -193,6 +201,8 @@ public class PlatformApi implements Serializable {
 	}
 	
 	public String getRefreshToken() { return this.refresh_token;}
+	public String getTokenType() { return this.token_type;}
+	public String getAccessToken() { return this.access_token;}
 	
 	public String getAuthorization() {
 		return this.token_type == null ? this.access_token : this.token_type + " " + this.access_token;
@@ -336,6 +346,7 @@ public class PlatformApi implements Serializable {
 		handleResponse("changePassword", res, ConfigVars.class);
 	}
 	
+	//AccountFeature
 	public List<AccountFeature> getAccountFeatureList() throws IOException {
 		return getAccountFeatureList(null);
 	}
@@ -793,6 +804,65 @@ public class PlatformApi implements Serializable {
 		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/oauth/clients/" + id);
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("deleteOAuthClient", res, OAuthClient.class).get(0);
+	}
+	
+	//OAuthAuthorization
+	public List<OAuthAuthorization> getOAuthAuthorizationList() throws IOException {
+		return getOAuthAuthorizationList(null);
+	}
+	
+	public List<OAuthAuthorization> getOAuthAuthorizationList(Range range) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/oauth/authorizations", range);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getOAuthAuthorizationList", res, OAuthAuthorization.class, range);
+	}
+	
+	public OAuthAuthorization getOAuthAuthorization(String id) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/oauth/authorizations/" + id);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getOAuthAuthorization", res, OAuthAuthorization.class).get(0);
+	}
+	
+	public OAuthAuthorization createOAuthAuthorization(String clientId, String description, Scope... scopes) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/oauth/authorizations");
+		request.setParameter("client.id", clientId);
+		if (description != null) {
+			request.setParameter("description", description);
+		}
+		request.setParameter("client.id", clientId);
+		List<String> list = new ArrayList<String>();
+		for (Scope s : scopes) {
+			list.add(s.toString());
+		}
+		request.setParameter("scope", list);
+		request.setParameter("response_type", "code");
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("addOAuthAuthorization", res, OAuthAuthorization.class).get(0);
+	}
+	
+	public OAuthAuthorization deleteOAuthAuthorization(String id) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.DELETE, "/oauth/authorizations/" + id);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("deleteOAuthAuthorization", res, OAuthAuthorization.class).get(0);
+	}
+	
+	//OAuthToken
+	public OAuthToken createOAuthTokenWithCode(String secret, String code) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/oauth/tokens");
+		request.setParameter("grant.type", "authorization_code");
+		request.setParameter("client.secret", secret);
+		request.setParameter("grant.code", code);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("createOAuthTokenWithCode", res, OAuthToken.class).get(0);
+	}
+	
+	public OAuthToken createOAuthTokenWithRefreshToken(String secret, String refreshToken) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/oauth/tokens");
+		request.setParameter("grant.type", "refresh_token");
+		request.setParameter("client.secret", secret);
+		request.setParameter("refresh_token.token", refreshToken);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("createOAuthTokenWithCode", res, OAuthToken.class).get(0);
 	}
 	
 	//Key

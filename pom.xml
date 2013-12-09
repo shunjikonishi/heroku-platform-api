@@ -113,7 +113,8 @@
 					<outputDirectory>${env.MAVEN_LOCAL_REPOSITORY}</outputDirectory>
 					<branch>refs/heads/gh-pages</branch>
 					<includes>
-						<include>**/*</include>
+						<include>jp/**/*</include>
+						<include>.nojekyll</include>
 					</includes>
 					<repositoryName>maven-repo</repositoryName>
 					<repositoryOwner>flect</repositoryOwner>

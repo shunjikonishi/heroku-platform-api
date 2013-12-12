@@ -41,6 +41,7 @@ import jp.co.flect.heroku.platformapi.model.RateLimits;
 import jp.co.flect.heroku.platformapi.model.Region;
 import jp.co.flect.heroku.platformapi.model.Release;
 import jp.co.flect.heroku.platformapi.model.Scope;
+import jp.co.flect.heroku.platformapi.model.Slug;
 import jp.co.flect.heroku.platformapi.model.SSLEndpoint;
 import jp.co.flect.heroku.platformapi.model.Stack;
 
@@ -561,6 +562,29 @@ public class PlatformApi implements Serializable {
 		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/releases/" + idOrVersion);
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("getRelease", res, Release.class).get(0);
+	}
+
+	//Slug
+	public Slug getSlug(String appName, String slugId) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.GET, "/apps/" + appName + "/slugs/" + slugId);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("getSlug", res, Slug.class).get(0);
+	}
+
+	public Slug createSlug(String appName, Map<String, String> processTypes) throws IOException {
+		return createSlug(appName, processTypes, null);
+	}
+
+	public Slug createSlug(String appName, Map<String, String> processTypes, String commit) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/slugs");
+		for (Map.Entry<String, String> entry : processTypes.entrySet()) {
+			request.setParameter("process_types." + entry.getKey(), entry.getValue());
+		}
+		if (commit != null) {
+			request.setParameter("commit", commit);
+		}
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("createSlug", res, Slug.class).get(0);
 	}
 	
 	//Collaborator

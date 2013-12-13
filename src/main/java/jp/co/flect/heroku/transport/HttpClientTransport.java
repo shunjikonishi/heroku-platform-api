@@ -12,6 +12,7 @@ import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.FileEntity;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
@@ -62,7 +63,9 @@ public class HttpClientTransport implements Transport {
 				method.addHeader(key, s);
 			}
 		}
-		if (request.getParameters().size() > 0) {
+		if (request.getFileBody() != null) {
+			((HttpEntityEnclosingRequestBase)method).setEntity(new FileEntity(request.getFileBody()));
+		} else if (request.getParameters().size() > 0) {
 			if ("application/json".equals(request.getFirstHeader("content-type"))) {
 				String json = JsonUtils.serialize(request.getParameters());
 				((HttpEntityEnclosingRequestBase)method).setEntity(new StringEntity(json, "utf-8"));

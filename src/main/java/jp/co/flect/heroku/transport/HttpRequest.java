@@ -2,6 +2,7 @@ package jp.co.flect.heroku.transport;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.io.File;
 
 public class HttpRequest {
 	
@@ -18,6 +19,8 @@ public class HttpRequest {
 	
 	private Map<String, Object> params = new HashMap<String, Object>();
 	private Map<String, String[]> headers = new HashMap<String, String[]>();
+	
+	private File fileBody = null;
 	
 	public HttpRequest(Method method, String url) {
 		this.method = method;
@@ -67,5 +70,7 @@ public class HttpRequest {
 		return values == null || values.length == 0 ? null : values[0];
 	}
 	
+	public File getFileBody() { return this.fileBody;}
+	public void setFileBody(File f) { this.fileBody = f;}
 }
 

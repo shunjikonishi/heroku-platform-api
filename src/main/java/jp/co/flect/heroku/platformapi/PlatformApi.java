@@ -1,5 +1,6 @@
 package jp.co.flect.heroku.platformapi;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
@@ -563,6 +564,23 @@ public class PlatformApi implements Serializable {
 		HttpResponse res = getTransport().execute(request);
 		return handleResponse("getRelease", res, Release.class).get(0);
 	}
+	
+	public Release createRelease(String appName, String slugId, String description) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/releases");
+		request.setParameter("slug", slugId);
+		if (description != null) {
+			request.setParameter("description", description);
+		}
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("createRelease", res, Release.class).get(0);
+	}
+
+	public Release rollbackRelease(String appName, String releaseId) throws IOException {
+		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/releases");
+		request.setParameter("release", releaseId);
+		HttpResponse res = getTransport().execute(request);
+		return handleResponse("rollbackRelease", res, Release.class).get(0);
+	}
 
 	//Slug
 	public Slug getSlug(String appName, String slugId) throws IOException {
@@ -571,11 +589,11 @@ public class PlatformApi implements Serializable {
 		return handleResponse("getSlug", res, Slug.class).get(0);
 	}
 
-	public Slug createSlug(String appName, Map<String, String> processTypes) throws IOException {
-		return createSlug(appName, processTypes, null);
+	public Slug createSlug(String appName, Map<String, String> processTypes, File file) throws IOException {
+		return createSlug(appName, processTypes, file, null);
 	}
 
-	public Slug createSlug(String appName, Map<String, String> processTypes, String commit) throws IOException {
+	public Slug createSlug(String appName, Map<String, String> processTypes, File file, String commit) throws IOException {
 		HttpRequest request = buildRequest(HttpRequest.Method.POST, "/apps/" + appName + "/slugs");
 		for (Map.Entry<String, String> entry : processTypes.entrySet()) {
 			request.setParameter("process_types." + entry.getKey(), entry.getValue());
@@ -584,7 +602,17 @@ public class PlatformApi implements Serializable {
 			request.setParameter("commit", commit);
 		}
 		HttpResponse res = getTransport().execute(request);
-		return handleResponse("createSlug", res, Slug.class).get(0);
+		Slug slug = handleResponse("createSlug", res, Slug.class).get(0);
+		
+		//Upload slug to s3
+		String url = slug.getBlobPut();
+		HttpRequest uploadRequest = new HttpRequest(HttpRequest.Method.PUT, url);
+		uploadRequest.setFileBody(file);
+		res = getTransport().execute(uploadRequest);
+		if (res.getStatus() != 200) {
+			throw new IOException(res.getBody());
+		}
+		return slug;
 	}
 	
 	//Collaborator

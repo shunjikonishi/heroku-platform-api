@@ -75,6 +75,18 @@ public class PlatformApi implements Serializable {
 		return HOST_ID + "/oauth/authorize?client_id=" + clientId + "&response_type=code&scope=" + buf.toString();
 	}
 	
+	private static PlatformApi createPlatformApi(String oauthResponse) {
+		Map<String, Object> map = JsonUtils.parse(oauthResponse);
+		PlatformApi api = new PlatformApi();
+		api.access_token = (String)map.get("access_token");
+		api.expires_in = ((Number)map.get("expires_in")).intValue();
+		api.refresh_token = (String)map.get("refresh_token");
+		api.token_type = (String)map.get("token_type");
+		api.user_id = (String)map.get("user_id");
+		api.session_nonce = (String)map.get("session_nonce");
+		return api;
+	}
+	
 	/**
 	 * Authenticate with OAuth grant code
 	 */
@@ -87,7 +99,7 @@ public class PlatformApi implements Serializable {
 		Transport tran = TransportFactory.createDefaultTransport();
 		HttpResponse res = tran.execute(request);
 		if (res.getStatus() == 200) {
-			return JsonUtils.parse(res.getBody(), PlatformApi.class);
+			return createPlatformApi(res.getBody());
 		} else {
 			throw new HerokuException(res.getBody());
 		}
@@ -105,7 +117,7 @@ public class PlatformApi implements Serializable {
 		Transport tran = TransportFactory.createDefaultTransport();
 		HttpResponse res = tran.execute(request);
 		if (res.getStatus() == 200) {
-			return JsonUtils.parse(res.getBody(), PlatformApi.class);
+			return createPlatformApi(res.getBody());
 		} else {
 			throw new HerokuException(res.getBody());
 		}
@@ -171,6 +183,7 @@ public class PlatformApi implements Serializable {
 	private String refresh_token;
 	private String token_type;
 	private String session_nonce;
+	private String user_id;
 	
 	private boolean debug = false;
 	private int rateLimitRemaining = -1;
@@ -202,9 +215,12 @@ public class PlatformApi implements Serializable {
 		}
 	}
 	
+	public String getAccessToken() { return this.access_token;}
+	public int getExpiresIn() { return this.expires_in;}
 	public String getRefreshToken() { return this.refresh_token;}
 	public String getTokenType() { return this.token_type;}
-	public String getAccessToken() { return this.access_token;}
+	public String getSessionNonce() { return this.session_nonce;}
+	public String getUserId() { return this.user_id;}
 	
 	public String getAuthorization() {
 		return this.token_type == null ? this.access_token : this.token_type + " " + this.access_token;

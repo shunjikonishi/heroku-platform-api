@@ -16,6 +16,13 @@ public class JsonUtils {
 		} catch (Exception e) {
 		}
 		if (ret == null) {
+			try {
+				Class.forName("com.fasterxml.jackson.databind.ObjectMapper");
+				ret = new JsonByJackson();
+			} catch (Exception e) {
+			}
+		}
+		if (ret == null) {
 			throw new IllegalStateException("Jsonlibraries not found.");
 		}
 		json = ret;

@@ -628,6 +628,7 @@ public class PlatformApi implements Serializable {
 		if (res.getStatus() != 200) {
 			throw new IOException(res.getBody());
 		}
+		res.getBody();
 		return slug;
 	}
 	

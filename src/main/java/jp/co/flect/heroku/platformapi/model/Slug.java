@@ -14,8 +14,14 @@ public class Slug extends BasicModel {
 		super(map);
 	}
 	
-	public String getBlobGet() { return getAsString("blob.get");}
-	public String getBlobPut() { return getAsString("blob.put");}
+	public String getBlobUrl() { return getAsString("blob.url");}
+	public String getBlobMethod() { return getAsString("blob.method");}
+	
+	/** @deprecated Use getBlobUrl */
+	public String getBlobGet() { return getBlobUrl();}
+
+	/** @deprecated Use getBlobUrl */
+	public String getBlobPut() { return getBlobUrl();}
 
 	public String getCommit() { return getAsString("commit");}
 
